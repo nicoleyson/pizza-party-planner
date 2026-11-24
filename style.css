@@ -160,6 +160,11 @@ button.link:hover { background: none; color: var(--red-dark); }
 .not-host p + p { margin-top: 4px; font-size: .9rem; }
 .date-field { display: grid; gap: 4px; font-size: .85rem; font-weight: 700; color: var(--muted); }
 .date-field input { font-weight: 400; }
+.cohost-field { margin: 0; padding: 0; border: 0; min-width: 0; font-size: .85rem; font-weight: 700; color: var(--muted); }
+.cohost-field legend { padding: 0; margin-bottom: 4px; }
+.cohost-field legend .opt { display: block; margin-top: 4px; }
+.cohost-field .chips { color: var(--ink); font-size: .95rem; }
+#cohost-empty { margin-top: 2px; }
 
 /* ── The board's details ── */
 .people { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }

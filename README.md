@@ -38,6 +38,7 @@ A tiny, free website for pizza-making parties. Send friends one link, and everyo
 - **Host a new party:** each party gets its own secret invite link.
 - ✏️ edits the party name, when/where, and the **party date**.
 - **📅 Party date (optional):** after midnight at the end of that day, the party wraps up. The page becomes a read-only keepsake: nobody can add, change, vote or join, and the database rules enforce it. To reopen it, the host changes the date or clears it. Parties without a date stay open, just like before.
+- **Cohosts (optional):** in ✏️, tick friends who've joined to make them cohosts. They can change the party's name, date, pizza goal and guest list too, and get a "cohost" tag. Only you can pick or remove cohosts, and the party stays yours.
 - **🔒 Guest list:** optionally make a party invite-only, so only the Google emails you list can open it, even with the link. If people have already joined, you get a heads-up with their names before anyone is locked out.
 - Only people on your **hosts** list can create parties. Everyone else can join parties they're invited to, and gets a friendly "not authorized to host" message if they try to start one.
 
@@ -110,7 +111,7 @@ Every push to `main` runs the tests, builds `config.js` from the secrets, and pu
 
 The invite link works like a password, so only share it with friends. If it leaks, turn on invite-only or host a new party.
 
-> **Updating from an older version?** Paste the new [`database.rules.json`](database.rules.json) into Firebase → Realtime Database → **Rules** and click **Publish** *before* you push the site. The old rules don't know about party dates, so creating or editing a party with a date would fail until they're updated. The new rules work fine with the old site, and existing parties aren't affected.
+> **Updating from an older version?** Cohosts need the latest rules too, and so do party dates. Paste the new [`database.rules.json`](database.rules.json) into Firebase → Realtime Database → **Rules** and click **Publish** *before* you push the site. The old rules don't know about party dates, so creating or editing a party with a date would fail until they're updated. The new rules work fine with the old site, and existing parties aren't affected.
 
 To clean up old parties: Firebase → Realtime Database → **Data** → `parties` → delete the ones you don't need.
 

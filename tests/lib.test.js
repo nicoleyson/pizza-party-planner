@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { CODE_RE, SAFE_ID, parseCode, newCode, esc, cleanIds, voteCount, rankPizzas } from "../lib.js";
+import { CODE_RE, SAFE_ID, parseCode, newCode, esc, cleanIds, voteCount, rankPizzas, cohostIds } from "../lib.js";
 
 test("parseCode accepts a bare code, #code or a full invite link", () => {
   const code = "pepperoni-k3x9q2mf7a";
@@ -129,7 +129,9 @@ test("only people on the hosts list can start a party, and party data needs a re
   const { hosts, parties } = rules.rules;
   assert.equal(hosts.$key[".write"], false, "nobody can add themselves as a host from the site");
   assert.match(hosts.$key[".read"], /\$key === auth\.token\.email/, "people can only check their own hosts entry");
-  assert.match(parties.$party.meta[".write"], /data\.exists\(\) \|\| root\.child\('hosts'\)/, "new parties need a host");
+  assert.match(parties.$party.meta[".write"], /!data\.exists\(\) && newData\.child\('uid'\)\.val\(\) === auth\.uid && root\.child\('hosts'\)/, "new parties need a host");
+  assert.match(parties.$party.meta[".write"], /newData\.child\('uid'\)\.val\(\) === data\.child\('uid'\)\.val\(\)/, "nobody can take over a party");
+  assert.match(parties.$party.cohosts.$uid[".write"], /child\('meta'\)\.child\('uid'\)\.val\(\) === auth\.uid \|\| \(\$uid === auth\.uid && !newData\.exists\(\)\)/, "only the host picks cohosts; a cohost can only step down");
   for (const node of ["items", "pizzas", "diets", "people"]) {
     assert.match(parties.$party[node][".read"], /child\('meta'\)\.exists\(\)/, `${node} needs an existing party`);
     const write = parties.$party[node].$id?.[".write"] ?? parties.$party[node].$uid[".write"];
@@ -243,4 +245,9 @@ test("the host's pizza goal is a whole number from 1 to 50, or not set", async (
   const rules = JSON.parse(readFileSync(new URL("../database.rules.json", import.meta.url), "utf8"));
   const meta = rules.rules.parties.$party.meta;
   assert.match(meta.pizzaGoal[".validate"], /newData\.isNumber\(\)/, "the database has to accept pizzaGoal, or saving it fails");
+});
+
+test("cohostIds keeps only plain ids set to true", () => {
+  assert.deepEqual(cohostIds({ abc123: true, "bad id": true, nope: "yes", off: false, "<x>": true }), ["abc123"]);
+  assert.deepEqual(cohostIds(null), []);
 });

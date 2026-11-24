@@ -50,6 +50,7 @@ const guest = { uid: "guest1", email: "guest@gmail.com" };
 const stranger = { uid: "stranger1", email: "stranger@gmail.com" };
 const unverified = { uid: "unverified1", email: "unverified@gmail.com", verified: false };
 const passwordUser = { uid: "password1", email: "pw@gmail.com", provider: "password" };
+const cohost = { uid: "cohost1", email: "cohost@gmail.com" };
 
 // ── Parties, in the shapes already in the live database ──
 const DAY = 24 * 60 * 60 * 1000;
@@ -170,6 +171,36 @@ test("party settings: only the host, and only sensible values", { skip }, async 
   await denied(put(P, { ...oldMeta, title: "Mine now", uid: guest.uid }, guest), "a guest can't take over the party");
   await denied(put(`${P}/guestOnly`, true, guest), "a guest can't make it invite-only");
   await allowed(put(P, oldMeta, host), "back to how it was");
+});
+
+test("cohosts: the host picks them, and they can run the party's settings", { skip }, async () => {
+  const P = "parties/cohostparty-abc1";
+  await allowed(put(P, { meta: oldMeta, people: { [cohost.uid]: { name: "Cohost", joinedAt: 1 }, [guest.uid]: { name: "Guest", joinedAt: 2 } } }, "admin"), "seed");
+  // Only the host picks cohosts, only from people who joined, and never themselves
+  await denied(put(`${P}/cohosts/${guest.uid}`, true, guest), "a guest can't make themselves a cohost");
+  await denied(put(`${P}/cohosts/${stranger.uid}`, true, host), "someone who hasn't joined");
+  await denied(put(`${P}/cohosts/${host.uid}`, true, host), "the host themselves");
+  await denied(put(`${P}/cohosts/${cohost.uid}`, "yes", host), "anything but true");
+  await allowed(put(`${P}/cohosts/${cohost.uid}`, true, host), "the host adds a cohost");
+  await allowed(get(`${P}/cohosts`, guest), "everyone at the party can see who's cohosting");
+  await denied(put(`${P}/cohosts/${guest.uid}`, true, cohost), "a cohost can't add more cohosts");
+  // A cohost runs the settings, but the party stays the host's
+  await allowed(put(`${P}/meta`, { ...oldMeta, title: "Renamed by cohost", pizzaGoal: 4, date: "2030-03-03", endsAt: Date.now() + 9 * DAY }, cohost), "edit name, goal and date");
+  await denied(put(`${P}/meta`, { ...oldMeta, uid: cohost.uid }, cohost), "take over the party");
+  await denied(put(`${P}/meta`, null, cohost), "delete the party");
+  await denied(put(`${P}/meta`, { ...oldMeta, title: "Guest was here" }, guest), "a guest still can't edit settings");
+  await allowed(put(`${P}/guests`, { "guest@gmail,com": "guest@gmail.com" }, cohost), "manage the guest list");
+  await allowed(get(`${P}/guests`, cohost), "see the guest list");
+  await denied(get(`${P}/guests`, guest), "guests still can't");
+  await allowed(put(`${P}/meta/guestOnly`, true, cohost), "make it invite-only");
+  await allowed(get(`${P}/items`, cohost), "a cohost isn't locked out of invite-only, even off the list");
+  await allowed(put(`${P}/meta/guestOnly`, null, host), "the host can still change everything");
+  // Stepping down, and the host removing a cohost
+  await allowed(del(`${P}/cohosts/${cohost.uid}`, cohost), "a cohost can step down");
+  await denied(put(`${P}/meta`, oldMeta, cohost), "and then can't edit settings");
+  await allowed(put(`${P}/cohosts/${cohost.uid}`, true, host), "added again");
+  await allowed(del(`${P}/cohosts/${cohost.uid}`, host), "the host removes them");
+  await denied(get(`${P}/guests`, cohost), "and the guest list is private again");
 });
 
 test("creating parties: hosts only, with or without a date", { skip }, async () => {

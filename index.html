@@ -93,6 +93,11 @@
       <label class="date-field">How many pizzas are we making? <span class="opt">(optional: the ones with the most votes get made)</span>
         <input type="number" id="meta-goal" min="1" max="50" step="1" inputmode="numeric" placeholder="4">
       </label>
+      <fieldset id="cohost-field" class="cohost-field" hidden>
+        <legend>Cohosts <span class="opt">(optional: they can change these settings and the guest list too)</span></legend>
+        <div id="cohost-chips" class="chips"></div>
+        <p id="cohost-empty" class="opt">Once friends join, you can pick them here.</p>
+      </fieldset>
       <div class="row"><button>Save</button><button type="button" class="secondary" id="meta-cancel">Cancel</button></div>
     </form>
     <div id="people" class="people" aria-label="Who's coming" hidden></div>

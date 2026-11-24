@@ -1,5 +1,5 @@
 import { pieHTML, ICONS, ICON_GROUPS, safeIcon, guessIcon, SAUCE_LOOKS, CHEESE_LOOKS } from "./pie.js";
-import { parseCode, newCode, esc, cleanIds, voteCount, rankPizzas, groupItems, ingredientKey, totalAmount, partyEndsAt, pizzaGoal, isOver, formatPartyDate, todayISO, localDemo } from "./lib.js";
+import { parseCode, newCode, esc, cleanIds, cohostIds, voteCount, rankPizzas, groupItems, ingredientKey, totalAmount, partyEndsAt, pizzaGoal, isOver, formatPartyDate, todayISO, localDemo } from "./lib.js";
 import { morph } from "./morph.js";
 
 const CATS = { sauce: "Sauces", cheese: "Cheeses", topping: "Toppings", other: "Dough, drinks and more" };
@@ -176,11 +176,11 @@ function startParty(code) {
       toast("Hmm, that didn't save 😕 Check your connection and try again.");
       throw err;
     });
-  // Once the party's over it's a keepsake: only the host's settings (name, date, guest list) can change.
+  // Once the party's over it's a keepsake: only the host's settings (name, date, guest list, cohosts) can change.
   // The database rules enforce this too.
   const over = () => isOver(state.meta);
   const locked = (p) => {
-    if (!over() || p.startsWith("meta") || p.startsWith("guests")) return false;
+    if (!over() || p.startsWith("meta") || p.startsWith("guests") || p.startsWith("cohosts")) return false;
     toast("This party's over, so it can't change anymore 🍕");
     return true;
   };
@@ -255,7 +255,7 @@ function startParty(code) {
   $("guest-only").addEventListener("change", resetGuestConfirm);
   $("guest-emails").addEventListener("input", resetGuestConfirm);
   $("guest-save").addEventListener("click", async () => {
-    if (state.meta.uid !== uid) return;
+    if (!canManage()) return;
     const emails = [...new Set($("guest-emails").value.split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter(Boolean))];
     const bad = emails.find((e) => !EMAIL_RE.test(e) || e.length > 100);
     if (bad) return toast(`That doesn't look like an email: ${bad}`);
@@ -301,7 +301,10 @@ function startParty(code) {
     location.reload();
   });
 
-  let state = { meta: {}, items: {}, pizzas: {}, diets: {}, people: {}, guests: {} };
+  let state = { meta: {}, items: {}, pizzas: {}, diets: {}, people: {}, guests: {}, cohosts: [] };
+  // The host made the party. Cohosts (picked by the host) can change its settings and guest list too.
+  const isOwner = () => state.meta.uid === uid;
+  const canManage = () => isOwner() || state.cohosts.includes(uid);
   let watchingGuests = false;
   let renaming = null; // pizza id being renamed inline
   let armed = null; // "item:<id>", "pizza:<id>" or "diet:<id>" waiting for a second tap to delete
@@ -391,8 +394,8 @@ function startParty(code) {
     $("title").textContent = title;
     document.title = title;
     $("details").textContent = state.meta.details || "";
-    // Only the browser that created the party can edit its name/details
-    const isHost = state.meta.uid === uid;
+    // The host and any cohosts can edit the party's settings
+    const isHost = canManage();
     const done = over();
     const when = formatPartyDate(state.meta.date);
     $("party-date").hidden = !when;
@@ -547,7 +550,7 @@ function startParty(code) {
             const face = photo
               ? `<img src="${esc(photo)}" alt="" referrerpolicy="no-referrer" loading="lazy">`
               : `<i class="initial">${esc((p.name || "?").trim().charAt(0).toUpperCase())}</i>`;
-            const host = id === state.meta.uid ? `<b class="host-tag">host</b>` : "";
+            const host = id === state.meta.uid ? `<b class="host-tag">host</b>` : state.cohosts.includes(id) ? `<b class="host-tag">cohost</b>` : "";
             return `<span class="person" data-key="${id}">${face}${esc(p.name)}${host}</span>`;
           })
           .join("")
@@ -776,8 +779,19 @@ function startParty(code) {
       $("meta-details").value = state.meta.details || "";
       $("meta-date").value = state.meta.date || "";
       $("meta-goal").value = pizzaGoal(state.meta) || "";
+      renderCohostPicker();
       $("meta-title").focus();
     }
+  }
+  // Only the host picks cohosts, from the people who've joined
+  function renderCohostPicker() {
+    $("cohost-field").hidden = !isOwner();
+    if (!isOwner()) return;
+    const others = Object.entries(state.people).filter(([id]) => id !== uid).sort((a, b) => (a[1].joinedAt || 0) - (b[1].joinedAt || 0));
+    $("cohost-empty").hidden = others.length > 0;
+    $("cohost-chips").innerHTML = others
+      .map(([id, p]) => `<label class="chip"><input type="checkbox" data-cohost="${id}" ${state.cohosts.includes(id) ? "checked" : ""}><span>${esc(p.name)}</span></label>`)
+      .join("");
   }
   $("edit-meta").addEventListener("click", () => showMetaForm(true));
   $("reopen").addEventListener("click", () => { showMetaForm(true); $("meta-date").focus(); });
@@ -785,7 +799,7 @@ function startParty(code) {
   $("meta-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const title = $("meta-title").value.trim().slice(0, 60);
-    if (!title || state.meta.uid !== uid) return;
+    if (!title || !canManage()) return;
     const date = $("meta-date").value;
     if (date && !partyEndsAt(date)) return toast("That date doesn't look right");
     const goalText = $("meta-goal").value.trim();
@@ -794,6 +808,12 @@ function startParty(code) {
     const wasOver = over();
     const { date: _d, endsAt: _e, pizzaGoal: _g, ...rest } = state.meta;
     await store.set("meta", { ...rest, title, details: $("meta-details").value.trim().slice(0, 200), ...dateFields(date), ...(goal && { pizzaGoal: goal }) });
+    if (isOwner()) {
+      for (const box of document.querySelectorAll("#cohost-chips [data-cohost]")) {
+        const id = box.dataset.cohost;
+        if (box.checked !== state.cohosts.includes(id)) await store.set(`cohosts/${id}`, box.checked || null);
+      }
+    }
     showMetaForm(false);
     toast(wasOver && !isOver({ endsAt: partyEndsAt(date) }) ? "The party's back on! 🎉" : "Party updated ✨");
   });
@@ -910,6 +930,12 @@ function startParty(code) {
   // Load the party's title first: if the party doesn't exist (wrong or old link,
   // or the host deleted it), go back to the join/host screen. The rules refuse
   // everything else under a party that doesn't exist.
+  // The guest list (emails) loads only for the host and cohosts
+  function watchGuests() {
+    if (!canManage() || watchingGuests) return;
+    watchingGuests = true;
+    db.watch(`${ROOT}/guests`, (g) => { state.guests = g; renderGuestPanel(); }, () => { watchingGuests = false; state.guests = {}; });
+  }
   let loading = false;
   db.watch(`${ROOT}/meta`, (meta) => {
     if (!meta.title) {
@@ -919,13 +945,11 @@ function startParty(code) {
       return;
     }
     state.meta = meta;
-    if (meta.uid === uid && !watchingGuests) {
-      watchingGuests = true;
-      db.watch(`${ROOT}/guests`, (g) => { state.guests = g; renderGuestPanel(); });
-    }
+    watchGuests();
     render();
     if (loading) return;
     loading = true;
+    db.watch(`${ROOT}/cohosts`, (data) => { state.cohosts = cohostIds(data); watchGuests(); render(); }, () => {});
     for (const part of ["items", "pizzas", "diets"]) {
       db.watch(`${ROOT}/${part}`, (data) => { state[part] = cleanIds(data); render(); }, blocked);
     }

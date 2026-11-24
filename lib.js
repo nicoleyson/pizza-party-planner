@@ -27,6 +27,10 @@ export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ESCAPES[c])
 export const cleanIds = (obj) =>
   Object.fromEntries(Object.entries(obj || {}).filter(([k, v]) => SAFE_ID.test(k) && v && typeof v === "object"));
 
+// Cohosts are saved as { uid: true }; keep only plain ids set to true.
+export const cohostIds = (obj) =>
+  Object.keys(obj || {}).filter((k) => SAFE_ID.test(k) && obj[k] === true);
+
 export const voteCount = (p) => Object.keys(p?.votes || {}).length;
 
 // Most votes first; ties go to whichever was proposed first.
