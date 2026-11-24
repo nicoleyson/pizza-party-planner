@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <meta name="referrer" content="no-referrer">
 <!-- Only run code and talk to servers we expect: this site, Google's Firebase + fonts, and our database. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://*.firebaseio.com https://apis.google.com; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com; frame-src https://*.firebaseio.com https://*.firebaseapp.com https://accounts.google.com; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://*.firebaseio.com https://apis.google.com; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com; frame-src https://*.firebaseio.com https://*.firebaseapp.com https://accounts.google.com; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' data: https://lh3.googleusercontent.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Pizza Party</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍕</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,6 +17,17 @@
 <body>
 <div class="awning" aria-hidden="true"></div>
 <p id="mode" class="mode" hidden></p>
+
+<!-- Shown until someone signs in -->
+<div id="signin" hidden>
+  <header>
+    <div class="hero-pie" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M12 27 Q50 13 88 27 L54 91 Q50 98 46 91 Z" fill="#ffd25e" stroke="#4a2c22" stroke-width="3.5" stroke-linejoin="round"/><path d="M8 25 Q50 3 92 25 Q95 35 86 35 Q50 19 14 35 Q5 35 8 25 Z" fill="#e8a25a" stroke="#4a2c22" stroke-width="3.5" stroke-linejoin="round"/><circle cx="27" cy="42" r="5.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="73" cy="42" r="5.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="50" cy="80" r="4.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="45" cy="56" r="6" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><path d="M58 44 q8 -2 9 6 q-8 2 -9 -6z" fill="#6fb35c" stroke="#4a2c22" stroke-width="2" stroke-linejoin="round"/></svg></div>
+    <h1>Pizza Party</h1>
+    <p class="sub">Sign in so everyone knows who's bringing what.</p>
+    <button type="button" class="google-btn" id="google-signin"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Sign in with Google</button>
+    <p class="fine">We only use your name and photo so friends can see who's coming. Your email is never shown to other guests.</p>
+  </header>
+</div>
 
 <!-- Shown when there's no party code in the link -->
 <div id="gate" hidden>
@@ -47,6 +58,7 @@
     <div id="meta-view">
       <h1><span id="title">Pizza Party</span> <button class="ghost" id="edit-meta" title="Edit party name and details">✏️</button></h1>
       <p id="details" class="sub"></p>
+      <p id="invite-only" class="invite-only" hidden>🔒 invite-only</p>
     </div>
     <form id="meta-form" class="meta-form" hidden>
       <input id="meta-title" maxlength="60" required aria-label="Party name" placeholder="Party name">
@@ -56,6 +68,20 @@
     <div class="row wrap header-row">
       <label class="me">Your name <input id="my-name" maxlength="40" placeholder="e.g. Sam" autocomplete="given-name"></label>
       <button class="secondary" id="copy-link"><span class="emo">🔗</span>Copy invite link</button>
+      <button class="secondary" id="guest-btn" hidden><span class="emo">🔒</span>Guest list</button>
+    </div>
+    <div id="guest-panel" class="guest-panel" hidden>
+      <label class="toggle"><input type="checkbox" id="guest-only"> <span><b>Invite-only</b>: only people on this list (and you) can see or join the party</span></label>
+      <label class="guest-emails-label">Guest emails <span class="opt">(one per line, the Google address they sign in with)</span>
+        <textarea id="guest-emails" rows="5" placeholder="sam@gmail.com&#10;alex@gmail.com"></textarea>
+      </label>
+      <p class="fine">Only you can see this list. Guests never see each other's emails.</p>
+      <div class="row"><button type="button" id="guest-save">Save</button><button type="button" class="secondary" id="guest-close">Close</button></div>
+    </div>
+    <div id="people" class="people" hidden></div>
+    <div id="not-invited" class="not-invited" hidden>
+      <p>🔒 This party is invite-only, and <b id="not-invited-email"></b> isn't on the guest list.</p>
+      <p>Ask the host to add you, or <button type="button" class="link" id="switch-account">try a different Google account</button>.</p>
     </div>
     <p id="account" class="account" hidden></p>
     <a href="#" id="leave" class="leave">↩ other party</a>

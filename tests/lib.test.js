@@ -62,7 +62,7 @@ test("app and database rules use the same patterns", () => {
 test("database rules allow every kind of thing the app saves, and nothing else", () => {
   const rules = JSON.parse(readFileSync(new URL("../database.rules.json", import.meta.url), "utf8"));
   const party = rules.rules.parties.$party;
-  for (const node of ["meta", "items", "pizzas", "diets"]) assert.ok(party[node], `rules are missing ${node}`);
+  for (const node of ["meta", "items", "pizzas", "diets", "people", "guests"]) assert.ok(party[node], `rules are missing ${node}`);
   assert.equal(party.$other[".validate"], false);
   assert.equal(rules.rules.parties[".read"], false, "nobody should be able to list all parties");
   assert.match(party.diets.$id.note[".validate"], /<= 80/); // matches the input's maxlength
@@ -80,4 +80,18 @@ test("every write rule requires a signed-in user", () => {
   walk(rules.rules, "");
   assert.ok(writes.length > 5);
   for (const [path, rule] of writes) assert.ok(rule === false || rule.includes("auth != null"), `${path} allows writes without sign-in`);
+});
+
+test("only Google-signed-in people get in, and only the host sees the guest list", () => {
+  const rules = JSON.parse(readFileSync(new URL("../database.rules.json", import.meta.url), "utf8"));
+  const party = rules.rules.parties.$party;
+  assert.equal(party[".read"], undefined, "no blanket read: each part is checked on its own");
+  for (const node of ["meta", "items", "pizzas", "diets", "people"]) {
+    assert.match(party[node][".read"], /sign_in_provider === 'google.com'/, `${node} must require Google`);
+    assert.match(party[node][".read"], /guestOnly/, `${node} must respect invite-only`);
+  }
+  assert.match(party.guests[".read"], /meta'\)\.child\('uid'\)\.val\(\) === auth\.uid/, "guest list must be host-only");
+  const stored = Object.keys(party.people.$uid).filter((k) => !k.startsWith(".") && k !== "$other");
+  assert.deepEqual(stored.sort(), ["joinedAt", "name", "photo"], "the who's-coming list must only store name + photo");
+  assert.equal(party.people.$uid.$other[".validate"], false);
 });

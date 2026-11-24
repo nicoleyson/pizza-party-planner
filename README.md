@@ -35,7 +35,8 @@ Until Firebase is set up, the site runs in **demo mode** (data saved only in you
 
 - The invite link *is* the password: share it with friends only. Anyone who has it can add items, propose, rename, and vote. If it leaks, just host a new party.
 - The site itself is public (GitHub Pages), but without a code it only shows the join/host screen. The database refuses to list parties, so codes can't be discovered.
-- Everyone is quietly signed in with a Firebase anonymous account (no email, no password). The database rules use that ID, so only the host can edit the party name, people can only edit or delete their own ingredients, dietary notes and pizzas, and each person gets one vote per pizza. Anyone at the party can rename a pizza or change its look.
-- Optionally, people can tap "Sign in with Google" to keep editing their stuff from another device. Their Google email then shows in Firebase → Authentication → Users (only you can see it).
-- Setup for sign-in: Firebase → Security → Authentication → Sign-in method → enable **Anonymous** and **Google**. After publishing, add your GitHub Pages domain (e.g. `you.github.io`) under Authentication → Settings → Authorized domains.
+- Everyone signs in with Google. The database rules check that ID, so only the host can edit the party, people can only edit or delete their own ingredients, dietary notes and pizzas, and each person gets one vote per pizza. Anyone at the party can rename a pizza or change its look.
+- **Invite-only (optional):** the host can tap 🔒 Guest list, add friends' Google emails, and switch on invite-only. Then nobody else can see or change the party, even with the link.
+- **Privacy:** other guests see your name and Google profile photo, never your email. The guest list is only readable by the host. As the Firebase project owner, the host can also see who signed in under Authentication → Users.
+- Setup for sign-in: Firebase → Security → Authentication → Sign-in method → enable **Google**. After publishing, add your GitHub Pages domain (e.g. `you.github.io`) under Authentication → Settings → Authorized domains.
 - To clean up old parties: Firebase console → Realtime Database → `parties` → delete the ones you don't need.

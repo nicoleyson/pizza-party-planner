@@ -10,12 +10,11 @@ const CAT_ONE = { sauce: "Sauce", cheese: "Cheese", topping: "Topping", other: "
 const $ = (id) => document.getElementById(id);
 
 // ── Who am I ──
-// With Firebase sign-in set up, every browser quietly gets an anonymous account
-// (no email, no password) that the database can trust. People can optionally
-// link Google to use the same identity on other devices.
-// Without sign-in (demo mode or no apiKey yet) we fall back to a random id kept in this browser.
+// Everyone signs in with Google, so the database knows who's who and nobody
+// can pretend to be someone else. In demo mode (no Firebase) we use a random
+// id kept in this browser instead.
 let uid = localStorage.uid || (localStorage.uid = crypto.randomUUID());
-let account = null; // { auth, au, user } when Firebase sign-in is active
+let account = null; // { auth, au, user } once signed in with Google
 
 // ── Which party: the secret code lives after the # in the invite link ──
 // It's never sent to GitHub's servers and never stored in the repo.
@@ -28,35 +27,35 @@ if (!configured) {
   $("mode").textContent = "Demo mode: data is only saved in this browser. Add your Firebase config in config.js to share with friends.";
 }
 const db = configured ? await firebaseDb() : localDb();
+// Only real Google profile photos are ever shown (never arbitrary links from the database).
+const PHOTO_RE = /^https:\/\/lh3\.googleusercontent\.com\/[-\w./=~%]+$/;
+const safePhoto = (url) => (typeof url === "string" && url.length <= 300 && PHOTO_RE.test(url) ? url : "");
 
 async function firebaseDb() {
   const base = "https://www.gstatic.com/firebasejs/10.12.2";
   const { initializeApp } = await import(`${base}/firebase-app.js`);
   const fb = await import(`${base}/firebase-database.js`);
   const app = initializeApp(firebaseConfig);
-  if (firebaseConfig.apiKey) {
-    const au = await import(`${base}/firebase-auth.js`);
-    const auth = au.getAuth(app);
-    try {
-      const user = await new Promise((resolve, reject) => {
-        const stop = au.onAuthStateChanged(auth, (u) => {
-          if (u) { stop(); resolve(u); } else au.signInAnonymously(auth).catch(reject);
-        });
-      });
-      account = { auth, au, user };
-      uid = user.uid;
-    } catch (err) {
-      console.error(err);
-      $("mode").hidden = false;
-      $("mode").textContent = "Couldn't sign in to the database, so changes won't save. Try reloading.";
-    }
-  }
   const d = fb.getDatabase(app);
-  return {
-    watch: (p, cb) => fb.onValue(fb.ref(d, p), (s) => cb(s.val() || {}), (err) => toast("Couldn't load: " + err.message)),
+  const api = {
+    watch: (p, cb, onError) =>
+      fb.onValue(fb.ref(d, p), (s) => cb(s.val() || {}), (err) => (onError ? onError(err) : toast("Couldn't load: " + err.message))),
     add: (p, obj) => fb.push(fb.ref(d, p), obj),
     set: (p, val) => fb.set(fb.ref(d, p), val),
   };
+  if (!firebaseConfig.apiKey) return api; // sign-in not set up yet (see config.js)
+  const au = await import(`${base}/firebase-auth.js`);
+  const auth = au.getAuth(app);
+  const user = await new Promise((resolve) => {
+    const stop = au.onAuthStateChanged(auth, (u) => { stop(); resolve(u); });
+  });
+  if (!user || user.isAnonymous) {
+    showSignIn(auth, au);
+    return null;
+  }
+  account = { auth, au, user };
+  uid = user.uid;
+  return api;
 }
 
 function localDb() {
@@ -83,9 +82,27 @@ function localDb() {
   };
 }
 
+// ── Sign in with Google (shown before anything else) ──
+function showSignIn(auth, au) {
+  $("signin").hidden = false;
+  $("google-signin").addEventListener("click", async () => {
+    try {
+      await au.signInWithPopup(auth, new au.GoogleAuthProvider());
+      location.reload();
+    } catch (err) {
+      if (!["auth/popup-closed-by-user", "auth/cancelled-popup-request"].includes(err.code)) {
+        console.error(err);
+        toast(err.code === "auth/unauthorized-domain" ? "This website isn't approved for sign-in yet (host: add it in Firebase)." : "Sign-in didn't work. Try again?");
+      }
+    }
+  });
+}
+
 // ── Start ──
 const code = parseCode(location.hash) || parseCode(localStorage.lastParty);
-if (code) {
+if (!db) {
+  // waiting for Google sign-in
+} else if (code) {
   if (location.hash.slice(1) !== code) history.replaceState(null, "", "#" + code);
   startParty(code);
 } else {
@@ -149,46 +166,59 @@ function startParty(code) {
     try { await navigator.clipboard.writeText(link); toast("Invite link copied. Only share it with friends!"); }
     catch { prompt("Copy this invite link:", link); }
   });
-  // Optional Google sign-in, so your stuff stays editable from your other devices
-  function renderAccount() {
-    const el = $("account");
-    if (!account) return;
-    el.hidden = false;
-    const u = account.auth.currentUser;
-    const google = u?.providerData.find((p) => p.providerId === "google.com");
-    el.innerHTML = google
-      ? `Signed in as ${esc(google.email || google.displayName || "you")} · <button type="button" class="link" id="google-out">sign out</button>`
-      : `<button type="button" class="link" id="google-in">Sign in with Google</button> to edit your stuff from other devices <span class="opt">(optional)</span>`;
+  // Who's signed in (Google), with a way to sign out
+  if (account) {
+    const u = account.user;
+    $("account").hidden = false;
+    $("account").innerHTML = `Signed in as ${esc(u.displayName || u.email || "you")} · <button type="button" class="link" id="sign-out">sign out</button>`;
+    $("sign-out").addEventListener("click", async () => {
+      await account.au.signOut(account.auth);
+      location.reload();
+    });
+    if (!nameInput.value && u.displayName) nameInput.value = localStorage.myName = u.displayName.split(" ")[0];
   }
-  renderAccount();
-  if (account && !localStorage.myName && account.user.displayName) {
-    nameInput.value = localStorage.myName = account.user.displayName.split(" ")[0];
+
+  // ── Guest list (host only) ──
+  const EMAIL_RE = /^[^\s@,#$[\]\/]+@[^\s@,#$[\]\/]+\.[^\s@,#$[\]\/]+$/;
+  const emailKey = (e) => e.toLowerCase().replaceAll(".", ",");
+  function renderGuestPanel() {
+    if ($("guest-panel").hidden || document.activeElement === $("guest-emails")) return;
+    $("guest-only").checked = state.meta.guestOnly === true;
+    $("guest-emails").value = Object.values(state.guests || {}).filter((e) => typeof e === "string").sort().join("\n");
   }
-  $("account").addEventListener("click", async (e) => {
-    const { auth, au } = account || {};
-    if (e.target.id === "google-in") {
-      const provider = new au.GoogleAuthProvider();
-      try {
-        // Upgrades this browser's anonymous account, so everything you've added stays yours
-        await au.linkWithPopup(auth.currentUser, provider);
-        toast("Signed in! Your stuff is now editable from any device 🎉");
-        renderAccount();
-      } catch (err) {
-        if (err.code === "auth/credential-already-in-use") {
-          // This Google account was already used on another device: switch to it.
-          await au.signInWithCredential(auth, au.GoogleAuthProvider.credentialFromError(err));
-          toast("Welcome back! Anything you added here before signing in stays locked to this device.");
-          setTimeout(() => location.reload(), 2500);
-        } else if (!["auth/popup-closed-by-user", "auth/cancelled-popup-request"].includes(err.code)) {
-          console.error(err);
-          toast("Google sign-in didn't work. Try again?");
-        }
-      }
-    } else if (e.target.id === "google-out") {
-      await au.signOut(auth);
-      location.reload(); // comes back as a fresh anonymous visitor
-    }
+  $("guest-btn").addEventListener("click", () => {
+    $("guest-panel").hidden = !$("guest-panel").hidden;
+    renderGuestPanel();
   });
+  $("guest-close").addEventListener("click", () => ($("guest-panel").hidden = true));
+  $("guest-save").addEventListener("click", async () => {
+    if (state.meta.uid !== uid) return;
+    const emails = [...new Set($("guest-emails").value.split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter(Boolean))];
+    const bad = emails.find((e) => !EMAIL_RE.test(e) || e.length > 100);
+    if (bad) return toast(`That doesn't look like an email: ${bad}`);
+    if (emails.length > 200) return toast("That's a lot of guests! Max 200.");
+    const on = $("guest-only").checked;
+    if (on && !emails.length) return toast("Add at least one guest email first");
+    await store.set("guests", emails.length ? Object.fromEntries(emails.map((e) => [emailKey(e), e])) : null);
+    await store.set("meta/guestOnly", on || null);
+    $("guest-panel").hidden = true;
+    toast(on ? `Invite-only is on: ${emails.length} guest${emails.length === 1 ? "" : "s"} 🔒` : "Guest list saved. Anyone with the link can join.");
+  });
+  $("switch-account").addEventListener("click", async () => {
+    await account?.au.signOut(account.auth);
+    location.reload();
+  });
+
+  // Put yourself on the "who's coming" list (name + Google photo; never your email)
+  const joinParty = () => {
+    const name = nameInput.value.trim().slice(0, 40);
+    if (!name || !account) return;
+    const photo = safePhoto(account.user.photoURL);
+    const mine = state.people[uid];
+    if (mine && mine.name === name && (mine.photo || "") === photo) return;
+    store.set(`people/${uid}`, { name, joinedAt: mine?.joinedAt || Date.now(), ...(photo && { photo }) }).catch(() => {});
+  };
+  nameInput.addEventListener("change", joinParty);
 
   $("leave").addEventListener("click", (e) => {
     e.preventDefault();
@@ -197,7 +227,8 @@ function startParty(code) {
     location.reload();
   });
 
-  let state = { meta: {}, items: {}, pizzas: {}, diets: {} };
+  let state = { meta: {}, items: {}, pizzas: {}, diets: {}, people: {}, guests: {} };
+  let watchingGuests = false;
   let renaming = null; // pizza id being renamed inline
   let armed = null; // "item:<id>", "pizza:<id>" or "diet:<id>" waiting for a second tap to delete
   let armTimer;
@@ -229,6 +260,10 @@ function startParty(code) {
     const isHost = state.meta.uid === uid;
     $("edit-meta").hidden = !isHost;
     if (!isHost) showMetaForm(false);
+    $("guest-btn").hidden = !isHost || !account;
+    if (!isHost) $("guest-panel").hidden = true;
+    $("invite-only").hidden = state.meta.guestOnly !== true;
+    renderPeople();
     renderItems();
     renderDiets();
     renderBuilder();
@@ -273,6 +308,25 @@ function startParty(code) {
       .join("");
     $("items").innerHTML = html || `<p class="empty">The table is empty… be the first to bring something! 🥺</p>`;
     if (focused) document.querySelector(`#items [data-edit-form] [data-f="${focused}"]`)?.focus();
+  }
+
+  // "Who's coming": everyone who has joined, with their Google photo
+  function renderPeople() {
+    const list = Object.entries(state.people).sort((a, b) => (a[1].joinedAt || 0) - (b[1].joinedAt || 0));
+    $("people").hidden = !list.length;
+    $("people").innerHTML = list.length
+      ? `<span class="people-label">Who's coming</span>` +
+        list
+          .map(([id, p]) => {
+            const photo = safePhoto(p.photo);
+            const face = photo
+              ? `<img src="${esc(photo)}" alt="" referrerpolicy="no-referrer" loading="lazy">`
+              : `<i class="initial">${esc((p.name || "?").trim().charAt(0).toUpperCase())}</i>`;
+            const host = id === state.meta.uid ? `<b class="host-tag">host</b>` : "";
+            return `<span class="person">${face}${esc(p.name)}${host}</span>`;
+          })
+          .join("")
+      : "";
   }
 
   function renderDiets() {
@@ -523,10 +577,31 @@ function startParty(code) {
 
   // IDs end up inside HTML attributes, so ignore anything that isn't a plain ID
   // (the database rules reject them too; this is a second lock on the door).
-  db.watch(ROOT, (data) => {
-    state = { meta: data.meta || {}, items: cleanIds(data.items), pizzas: cleanIds(data.pizzas), diets: cleanIds(data.diets) };
+  // Each part loads separately, so the guest list (emails) only ever goes to the host.
+  let joined = false;
+  const blocked = (err) => {
+    if (!/permission/i.test(err.message)) return toast("Couldn't load: " + err.message);
+    $("party").querySelector("main").hidden = true;
+    $("party").querySelector(".header-row").hidden = true;
+    $("not-invited").hidden = false;
+    $("not-invited-email").textContent = account?.user.email || "your account";
+  };
+  db.watch(`${ROOT}/meta`, (meta) => {
+    state.meta = meta;
+    if (meta.uid === uid && !watchingGuests) {
+      watchingGuests = true;
+      db.watch(`${ROOT}/guests`, (g) => { state.guests = g; renderGuestPanel(); });
+    }
     render();
-  });
+  }, blocked);
+  for (const part of ["items", "pizzas", "diets"]) {
+    db.watch(`${ROOT}/${part}`, (data) => { state[part] = cleanIds(data); render(); }, blocked);
+  }
+  db.watch(`${ROOT}/people`, (data) => {
+    state.people = cleanIds(data);
+    renderPeople();
+    if (!joined) { joined = true; joinParty(); }
+  }, blocked);
 }
 
 let toastTimer;
