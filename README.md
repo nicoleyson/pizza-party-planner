@@ -1,64 +1,108 @@
 # 🍕 Pizza Party Planner
 
-A tiny, free site for pizza-making parties. Guests sign in with Google, say what ingredients they're bringing, note any dietary needs, build pizzas from what's actually coming, name them, and vote.
+A tiny, free website for pizza-making parties. Send friends one link, and everyone signs in with Google, says what they're bringing, builds pizzas from what's actually coming, and votes on the best one.
 
-**Private and reusable:** each party has a secret code in its invite link (`https://…/pizza-party-planner/#pepperoni-k3x9q2mf7a`). Only people with the link who sign in can see or edit that party, and hosts can make a party invite-only. The code is never in the repo, and the part after `#` isn't even sent to GitHub's servers. Hosts click **Host a new party** for a fresh code each time. Only emails you list under `hosts` in Firebase can host, so strangers can't fill your database with their own parties.
+**Live:** <https://nicoleyson.github.io/pizza-party-planner/>
 
-- Hosting: **GitHub Pages** (free)
-- Shared data: **Firebase Realtime Database** (free "Spark" plan, no credit card)
-- No build step: plain HTML/CSS/JS
+## What it does
 
-Until Firebase is set up, the site runs in **demo mode** with no sign-in (data saved only in your own browser), so you can try it right away. Serve the folder locally, for example with `python3 -m http.server`, and open it.
+**For guests**
+- **Who's coming:** everyone who opens the party shows up at the top with their name and Google photo. The host gets a little "host" tag.
+- **What are you bringing?** Add ingredients as a sauce, cheese, topping or other (dough, drinks…), with an optional amount and pizza icon. Fix the category or details later with ✏️, and remove them with ✕. If two people bring the same thing, it merges into one row, and anyone can tap **+ me too**.
+- **Dietary needs (optional):** a short list for allergies or restrictions, so nobody gets surprised.
+- **Propose a pizza:** pick from the ingredients people are actually bringing, name it, and see it drawn live. 🎨 changes the sauce color and how much cheese there is. Anyone can rename a pizza.
+- **Vote:** tap ♥ on your favorites, one vote per person per pizza. The leader gets a 👑.
 
-## 1. Set up Firebase (about 5 minutes)
+**For hosts**
+- **Host a new party:** each party gets its own secret invite link.
+- ✏️ edits the party name and when/where.
+- **🔒 Guest list:** optionally make a party invite-only, so only the Google emails you list can open it, even with the link.
+- Only people on your **hosts** list can create parties. Everyone else can join parties they're invited to, and gets a friendly "not authorized to host" message if they try to start one.
 
-1. Go to <https://console.firebase.google.com> → create a project (Google Analytics: off).
-2. Left sidebar → **Databases & Storage → Realtime Database** → **Create database** → any location → **Start in locked mode**.
-3. Open the **Rules** tab, paste the contents of [`database.rules.json`](database.rules.json), and click **Publish**.
-4. Copy the database address from the **Data** tab (like `https://your-project-default-rtdb.firebaseio.com`). You'll need it in a moment.
-5. Security → **Authentication** → Sign-in method → enable **Google**.
-6. **Choose who can host parties.** In the **Data** tab, add a `hosts` key at the top level, and under it one entry per host: the Google email in lowercase with every `.` swapped for `,`, set to `true`. For example, `sam.lee@gmail.com` becomes `sam,lee@gmail,com: true`. Only these people can create parties. Anyone else who signs in can still join a party they've been invited to, but can't start one. Nobody can add themselves from the website.
-7. Project settings → **Your apps** → add a Web app. For running locally, copy [`config.example.js`](config.example.js) to `config.js` and fill in your values. `config.js` is gitignored, so your keys and project never end up in the repo, and anyone can reuse this repo with their own Firebase project.
+**How it's built:** plain HTML/CSS/JS with no build step. It's hosted free on **GitHub Pages**, with data and Google sign-in from **Firebase** on the free Spark plan (no credit card needed).
 
-> These values aren't really secrets: the live site has to send them to every visitor's browser so it can talk to Firebase. Keeping the key out of the repo just stops it showing up in GitHub's code search and secret scanners. What actually protects the data is the database rules, plus the authorized-domains list for sign-in.
+## Privacy
 
-## 2. Publish on GitHub Pages
+- Each party lives behind a secret code in its invite link (`…/pizza-party-planner/#pepperoni-k3x9q2mf7a`). The part after `#` is never sent to GitHub, the code isn't in the repo, and the database refuses to list parties, so codes can't be found or guessed.
+- Other guests see your **name and Google photo**, never your email. The guest list is only visible to that party's host.
+- As the Firebase project owner, you can see everyone who has signed in under Authentication → Users.
+
+## Set it up yourself
+
+You need a Google account (for Firebase) and a GitHub account.
+
+### 1. Firebase (about 10 minutes)
+
+1. Go to <https://console.firebase.google.com> and create a project (Google Analytics: off).
+2. **Realtime Database** → **Create database** → any location → **Start in locked mode**.
+3. **Rules** tab: paste in [`database.rules.json`](database.rules.json), then click **Publish**.
+4. **Authentication** → **Sign-in method** → enable **Google**. Leave every other provider off.
+5. **Add yourself as a host.** In the database's **Data** tab, add a `hosts` key at the top level. Under it, add one entry per host: their Google email in lowercase with every `.` changed to `,`, set to `true` (boolean, no quotes). For example, `sam.lee@gmail.com` becomes `sam,lee@gmail,com: true`. Add more hosts the same way at any time. Nobody can add themselves from the website.
+6. **Project settings → Your apps** → add a **Web app**. Copy its config values; you'll need them below.
+
+### 2. Run it on your computer
+
+```bash
+cp config.example.js config.js   # then fill in your values from step 6
+python3 -m http.server 8765
+```
+
+Open <http://localhost:8765>. `config.js` is gitignored, so your keys and project details never end up in the repo.
+
+Without a `config.js`, the site runs in **demo mode**: no sign-in, and data saved only in your own browser. That's handy for trying out the design.
+
+To run the tests (Node 20 or newer, no installs needed):
+
+```bash
+npm test
+```
+
+### 3. Publish on GitHub Pages
 
 1. Push this folder to a GitHub repo.
 2. Repo → **Settings → Secrets and variables → Actions** → add four repository secrets from your Firebase web config: `FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_PROJECT_ID` and `FIREBASE_DATABASE_URL`.
 3. Repo → **Settings → Pages** → Source: **GitHub Actions**.
-4. Every push to `main` runs the tests, builds `config.js` from the secrets, and publishes ([`.github/workflows/pages.yml`](.github/workflows/pages.yml)). It's live at `https://<your-username>.github.io/<repo-name>/`.
-5. Firebase → **Authentication → Settings → Authorized domains** → add `<your-username>.github.io`, or Google sign-in won't work on the live site.
+4. Firebase → **Authentication → Settings → Authorized domains** → add `<your-username>.github.io`, or Google sign-in won't work on the live site.
+
+Every push to `main` runs the tests, builds `config.js` from the secrets, and publishes the site ([`.github/workflows/pages.yml`](.github/workflows/pages.yml)) at `https://<your-username>.github.io/<repo-name>/`.
+
+> The Firebase web config isn't truly secret: the live site has to send it to every visitor's browser so it can talk to Firebase. Keeping it out of the repo stops it showing up in code search and secret scanners, and lets anyone reuse this repo with their own project. What actually protects your data is the database rules.
 
 ## Hosting a party
 
-1. Open the site → **Host a new party** → type a name and when/where.
+1. Open the site, sign in, and fill in **Host a new party** with a name and when/where.
 2. Click **🔗 Copy invite link** and send it to your group chat.
-3. As the host, you can edit the party name and details with ✏️, and use 🔒 Guest list to make it invite-only.
+3. Optional: **🔒 Guest list** → add friends' Google emails → turn on **Invite-only**.
 
-## Good to know
+The invite link works like a password, so only share it with friends. If it leaks, turn on invite-only or host a new party.
 
-- The invite link works like a password: share it with friends only. Anyone who has it and signs in can add items, propose pizzas and vote. If it leaks, turn on invite-only or host a new party.
-- The site itself is public (GitHub Pages), but without a code it only shows the join/host screen. The database refuses to list parties, so codes can't be discovered.
-- Everyone signs in with Google. The database rules check that ID, so only the host can edit the party, people can only edit or delete their own ingredients, dietary notes and pizzas, and each person gets one vote per pizza. Anyone at the party can rename a pizza or change its look.
-- **Invite-only (optional):** the host can tap 🔒 Guest list, add friends' Google emails, and switch on invite-only. Then nobody else can see or change the party, even with the link.
-- **Privacy:** other guests see your name and Google profile photo, never your email. The guest list is only readable by the host. As the Firebase project owner, the host can also see who signed in under Authentication → Users.
-- To clean up old parties: Firebase console → Realtime Database → `parties` → delete the ones you don't need.
+To clean up old parties: Firebase → Realtime Database → **Data** → `parties` → delete the ones you don't need.
 
 ## Security checklist
 
-What's already handled for you:
+Already handled:
 
-- **Database rules** ([`database.rules.json`](database.rules.json)): nobody can read or write without signing in with a verified Google account. Nobody can list parties, add themselves as a host, or store data under a party that doesn't exist. Everything people save is length-limited and checked.
+- **Database rules** ([`database.rules.json`](database.rules.json)):
+  - Nothing can be read or written without signing in with a verified Google account.
+  - Only hosts can create parties.
+  - People can only change their own things. The exceptions, by design: any guest can rename a pizza or change its look.
+  - Each person gets one vote per pizza.
+  - Nobody can list parties, add themselves as a host, or store data under a party that doesn't exist.
+  - Everything saved is length-limited and checked.
 - **No keys in the repo:** `config.js` is gitignored, and the deploy builds it from repo secrets.
-- **Content Security Policy** (in `index.html`): the page only runs code from this site and Google's Firebase servers, and only connects to Firebase and Google sign-in. Anything people type is escaped before it's shown.
+- **Content Security Policy** (in `index.html`): the page only runs code from this site and Google's Firebase servers, and only connects to Firebase and Google sign-in.
+- **Escaping:** anything people type is escaped before it's shown, icons must come from a fixed list, and photos must be real Google profile photo links.
 - **No referrer:** invite codes never leak to other sites through links.
 
-Settings to check in Firebase and Google Cloud:
+Worth checking in Firebase and Google Cloud:
 
-1. **Sign-in providers** (Authentication → Sign-in method): only **Google** should be enabled. The rules ignore every other kind of account anyway.
-2. **Authorized domains** (Authentication → Settings): keep `localhost` (for local testing), `<project>.firebaseapp.com` (Google sign-in runs there) and your `<username>.github.io`. `<project>.web.app` is optional.
-3. **Lock the API key to your sites** (optional but recommended):
+1. **Sign-in providers** (Authentication → Sign-in method): only **Google** should be enabled.
+2. **Authorized domains** (Authentication → Settings):
+   - Keep `localhost` for local testing.
+   - Keep `<project>.firebaseapp.com`: Google sign-in runs there.
+   - Keep your `<username>.github.io`.
+   - `<project>.web.app` is optional.
+3. **Lock the API key to your sites** (recommended):
    1. Open <https://console.cloud.google.com/apis/credentials>, signed in with the same Google account, and pick your Firebase project in the project picker at the top.
    2. Under **API Keys**, click **Browser key (auto created by Firebase)**.
    3. **Application restrictions** → **Websites**, then add:
@@ -66,4 +110,18 @@ Settings to check in Firebase and Google Cloud:
       - `https://<project>.firebaseapp.com/*` (required, or Google sign-in breaks)
       - `http://localhost:8765/*` (for local testing)
    4. Click **Save**. It can take a few minutes to apply. Then sign in on the live site once to confirm it still works.
-4. **Spark plan:** stay on the free plan. If anyone ever floods the database, it pauses at the free limits instead of billing you.
+4. **Stay on the Spark plan:** if anyone ever floods the database, it pauses at the free limits instead of billing you.
+
+## Files
+
+| File | What it is |
+|---|---|
+| `index.html` | The page, including its Content Security Policy |
+| `app.js` | Sign-in, the party screens, saving and live updates |
+| `lib.js` | Small helpers: party codes, escaping, grouping ingredients, ranking pizzas |
+| `pie.js` | The pizza drawings: sauce colors, cheese, topping dots and icons |
+| `style.css` | The sticker-book look |
+| `config.example.js` | Template for your `config.js` (Firebase settings) |
+| `database.rules.json` | Firebase security rules: paste these into the Rules tab |
+| `tests/` | `npm test`: helpers, drawings, and checks that the rules stay strict |
+| `.github/workflows/pages.yml` | Tests, builds `config.js` from secrets, and deploys |
