@@ -116,15 +116,15 @@ if (!db) {
 function showGate() {
   $("gate").hidden = false;
   // Only people the site owner added to hosts/ in Firebase can start parties.
-  // (The database rules enforce this; this just hides the form for everyone else.)
-  if (!account) $("host-section").hidden = false; // demo mode: everyone can host
-  else {
-    const email = account.user.email || "";
-    const showNotHost = () => { $("not-host-email").textContent = email; $("not-host").hidden = false; };
-    db.watch(`hosts/${email.toLowerCase().replaceAll(".", ",")}`, (v) => {
-      if (v === true) $("host-section").hidden = false;
-      else showNotHost();
-    }, showNotHost);
+  // The database rules enforce this; here we just explain it up front.
+  const notHost = () => {
+    $("not-host-email").textContent = account?.user.email || "this account";
+    $("not-host").hidden = false;
+    $("new-form").hidden = true;
+  };
+  if (account) {
+    const key = (account.user.email || "").toLowerCase().replaceAll(".", ",");
+    db.watch(`hosts/${key}`, (v) => (v === true ? ($("not-host").hidden = true, $("new-form").hidden = false) : notHost()), notHost);
   }
   $("join-form").addEventListener("submit", (e) => {
     e.preventDefault();
@@ -135,12 +135,21 @@ function showGate() {
   $("new-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const c = newCode();
-    await db.set(`parties/${c}/meta`, {
-      title: $("new-title").value.trim().slice(0, 60),
-      details: $("new-details").value.trim().slice(0, 200),
-      uid,
-      createdAt: Date.now(),
-    });
+    try {
+      await db.set(`parties/${c}/meta`, {
+        title: $("new-title").value.trim().slice(0, 60),
+        details: $("new-details").value.trim().slice(0, 200),
+        uid,
+        createdAt: Date.now(),
+      });
+    } catch (err) {
+      console.error(err);
+      if (/permission/i.test(err.code || err.message)) {
+        notHost();
+        return toast("🔒 You're not authorized to host parties.");
+      }
+      return toast("Hmm, that didn't save 😕 Check your connection and try again.");
+    }
     location.hash = c;
   });
 }

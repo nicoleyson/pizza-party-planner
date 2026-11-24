@@ -40,15 +40,18 @@
         <button>Join</button>
       </form>
     </section>
-    <section id="host-section" hidden>
+    <section id="host-section">
       <h2><span class="h-emoji">🎉</span> Host a new party</h2>
+      <div id="not-host" class="not-host" role="alert" hidden>
+        <p>🔒 <b>You're not authorized to host parties.</b></p>
+        <p>You're signed in as <b id="not-host-email"></b>. Ask the site owner to add you as a host. You can still join any party you're invited to.</p>
+      </div>
       <form id="new-form">
         <input id="new-title" maxlength="60" placeholder="Party name (e.g. Sam's Pizza Night)" required aria-label="Party name">
         <input id="new-details" maxlength="200" placeholder="When / where (optional)" aria-label="Details">
         <button>Create party ✨</button>
       </form>
     </section>
-    <p id="not-host" class="fine" hidden>Want to host your own party? Ask the site owner to add <b id="not-host-email"></b> to the hosts list.</p>
   </main>
 </div>
 
