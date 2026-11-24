@@ -7,6 +7,7 @@ const PIZZA_CATS = ["sauce", "cheese", "topping"];
 const CAT_ONE = { sauce: "Sauce", cheese: "Cheese", topping: "Topping", other: "Other" };
 
 const $ = (id) => document.getElementById(id);
+let toastTimer; // declared up here: toast() can run while the page is still starting
 
 // config.js holds the real keys and isn't in git (the deploy writes it from
 // GitHub secrets). A fresh clone without it falls back to the example.
@@ -678,7 +679,6 @@ function startParty(code) {
   }, blocked);
 }
 
-let toastTimer;
 function toast(msg) {
   const t = $("toast");
   t.textContent = msg;
