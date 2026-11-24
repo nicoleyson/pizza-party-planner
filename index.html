@@ -6,28 +6,32 @@
 <meta name="robots" content="noindex">
 <title>Pizza Party</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍕</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="tablecloth" aria-hidden="true"></div>
 <p id="mode" class="mode" hidden></p>
 
 <!-- Shown when there's no party code in the link -->
 <div id="gate" hidden>
-  <header><h1>🍕 Pizza Party</h1><p class="sub">Got an invite link? Just open it. Or paste the party code here.</p></header>
+  <header><div class="hero-pie" aria-hidden="true">🍕</div><h1>Pizza Party</h1><p class="sub">Got an invite link? Just open it. Or paste the party code here.</p></header>
   <main>
     <section>
-      <h2>Join a party</h2>
+      <h2><span class="h-emoji">💌</span> Join a party</h2>
       <form id="join-form" class="row">
         <input id="join-code" placeholder="party code or invite link" required aria-label="Party code">
         <button>Join</button>
       </form>
     </section>
     <section>
-      <h2>Host a new party</h2>
+      <h2><span class="h-emoji">🎉</span> Host a new party</h2>
       <form id="new-form">
         <input id="new-title" maxlength="60" placeholder="Party name (e.g. Sam's Pizza Night)" required aria-label="Party name">
         <input id="new-details" maxlength="200" placeholder="When / where (optional)" aria-label="Details">
-        <button>Create party + get invite link</button>
+        <button>Create party ✨</button>
       </form>
     </section>
   </main>
@@ -36,6 +40,7 @@
 <!-- The party -->
 <div id="party" hidden>
   <header>
+    <div class="hero-pie" aria-hidden="true">🍕</div>
     <h1><span id="title">Pizza Party</span> <button class="ghost" id="edit-meta" title="Edit" hidden>✏️</button></h1>
     <p id="details" class="sub"></p>
     <div class="row wrap">
@@ -47,14 +52,14 @@
 
   <main>
     <section>
-      <h2>What are you bringing?</h2>
+      <h2><span class="h-emoji">🧺</span> What are you bringing?</h2>
       <form id="item-form" class="item-form">
         <label>Type
           <select id="item-cat">
-            <option value="sauce">Sauce</option>
-            <option value="cheese">Cheese</option>
-            <option value="topping" selected>Topping</option>
-            <option value="other">Other</option>
+            <option value="sauce">🍅 Sauce</option>
+            <option value="cheese">🧀 Cheese</option>
+            <option value="topping" selected>🍄 Topping</option>
+            <option value="other">🥖 Other</option>
           </select>
         </label>
         <label>Ingredient
@@ -63,22 +68,22 @@
         <label><span>How much <span class="opt">(optional)</span></span>
           <input id="item-amount" maxlength="30" placeholder="e.g. 2 bunches">
         </label>
-        <button>Add</button>
+        <button>Add ＋</button>
       </form>
       <div id="items"></div>
     </section>
 
     <section>
-      <h2>Propose a pizza</h2>
+      <h2><span class="h-emoji">👩‍🍳</span> Propose a pizza</h2>
       <form id="pizza-form">
         <input id="pizza-name" maxlength="60" placeholder="Name your pizza (e.g. The Basil Instinct)" required aria-label="Pizza name">
         <div id="builder"></div>
-        <button>Propose it</button>
+        <button>Put it in the oven 🔥</button>
       </form>
     </section>
 
     <section>
-      <h2>The pizzas <small>— vote for your favorites</small></h2>
+      <h2><span class="h-emoji">🏆</span> The pizzas <small>tap ♥ to vote</small></h2>
       <div id="pizzas"></div>
     </section>
   </main>

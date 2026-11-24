@@ -1,7 +1,48 @@
 import { firebaseConfig } from "./config.js";
 
 const CATS = { sauce: "Sauces", cheese: "Cheeses", topping: "Toppings", other: "Dough / drinks / other" };
+const EMOJI = { sauce: "🍅", cheese: "🧀", topping: "🍄", other: "🥖" };
 const PIZZA_CATS = ["sauce", "cheese", "topping"];
+
+// ── Mini pizza drawing: guess colors from ingredient names ──
+const TOPPING_COLORS = [
+  [/pepperoni|salami|chorizo|soppressata/i, "#c0392b"],
+  [/sausage|meatball|beef|bacon/i, "#8a4b2e"],
+  [/ham|prosciutto|turkey|chicken/i, "#f0a99a"],
+  [/mushroom|funghi/i, "#c9a77c"],
+  [/olive/i, "#3a2f2b"],
+  [/basil|spinach|arugula|rocket|kale|herb/i, "#3f8a3a"],
+  [/pepper|jalape|chil/i, "#5cb85c"],
+  [/onion|shallot/i, "#c77dab"],
+  [/pineapple|corn/i, "#f5c542"],
+  [/tomato/i, "#e74c3c"],
+  [/honey/i, "#f0a830"],
+  [/egg/i, "#fff8dc"],
+];
+const FALLBACK = ["#e67e22", "#9b59b6", "#16a085", "#d35400", "#2c3e50", "#c0392b"];
+const SPOTS = [[30, 30], [62, 26], [72, 55], [50, 72], [26, 60], [48, 46], [40, 22], [74, 38], [36, 78], [62, 82]];
+function toppingColor(name) {
+  const hit = TOPPING_COLORS.find(([re]) => re.test(name));
+  if (hit) return hit[1];
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return FALLBACK[h % FALLBACK.length];
+}
+function sauceColor(name) {
+  if (/pesto|basil|green/i.test(name)) return "#7da443";
+  if (/white|alfredo|garlic|cream|ricotta|bechamel|ranch/i.test(name)) return "#f6ecd6";
+  if (/bbq|barbecue/i.test(name)) return "#7b3420";
+  return "#d9472b";
+}
+function pieHTML(items) {
+  const sauce = items.find((i) => i.category === "sauce");
+  const cheese = items.some((i) => i.category === "cheese");
+  const tops = items.filter((i) => i.category === "topping");
+  const dots = tops.length
+    ? SPOTS.map(([x, y], k) => `<i class="top" style="left:${x}%;top:${y}%;background:${toppingColor(tops[k % tops.length].name)}"></i>`).join("")
+    : "";
+  return `<div class="pie" aria-hidden="true" style="--sauce:${sauce ? sauceColor(sauce.name) : "#f3d9a4"}">${cheese ? '<i class="cheese"></i>' : ""}${dots}</div>`;
+}
 const $ = (id) => document.getElementById(id);
 
 // ── Who am I (no accounts: a random id + name saved in this browser) ──
@@ -156,14 +197,14 @@ function startParty(code) {
       .map(([cat, label]) => {
         const list = itemsIn(cat);
         if (!list.length) return "";
-        return `<div class="cat"><h3>${label}</h3><ul class="list">${list
+        return `<div class="cat"><h3>${EMOJI[cat]} ${label}</h3><ul class="list">${list
           .map(([id, it]) => `<li><span><span class="item-name">${esc(it.name)}</span>${it.amount ? `<span class="amt">${esc(it.amount)}</span>` : ""}<span class="who">from ${esc(it.by)}</span></span>${
             it.uid === uid ? `<button class="ghost" data-del-item="${id}" title="Remove">✕</button>` : ""
           }</li>`)
           .join("")}</ul></div>`;
       })
       .join("");
-    $("items").innerHTML = html || `<p class="empty">Nobody has signed up to bring anything yet. Be the first!</p>`;
+    $("items").innerHTML = html || `<p class="empty">The table is empty… be the first to bring something! 🥺</p>`;
   }
 
   function renderBuilder() {
@@ -171,7 +212,7 @@ function startParty(code) {
     const checked = new Set([...el.querySelectorAll("input:checked")].map((i) => i.value));
     el.innerHTML = PIZZA_CATS.map((cat) => {
       const list = itemsIn(cat);
-      return `<div class="cat"><h3>${CATS[cat]}</h3>${
+      return `<div class="cat"><h3>${EMOJI[cat]} ${CATS[cat]}</h3>${
         list.length
           ? `<div class="chips">${list
               .map(([id, it]) => `<label class="chip"><input type="checkbox" value="${id}" ${checked.has(id) ? "checked" : ""}><span>${esc(it.name)}</span></label>`)
@@ -200,21 +241,23 @@ function startParty(code) {
                   : `<span class="ing gone" title="no longer on the list">removed</span>`;
               })
               .join("");
+            const pieItems = (p.ingredients || []).map((iid) => state.items[iid]).filter(Boolean);
             return `<div class="pizza ${lead ? "leader" : ""}">
-              <button class="vote ${mine ? "on" : ""}" data-vote="${id}" aria-pressed="${mine}"><b>${count}</b><small>${mine ? "voted" : "vote"}</small></button>
+              ${pieHTML(pieItems)}
               <div class="body">
-                <h3>${lead ? "👑 " : ""}${esc(p.name)}
+                <h3>${lead ? '<span class="crown" title="Most votes">👑</span>' : ""}${esc(p.name)}
                   <button class="ghost" data-rename="${id}" title="Rename">✏️</button>
                   ${p.uid === uid ? `<button class="ghost" data-del-pizza="${id}" title="Delete">✕</button>` : ""}
                 </h3>
                 <div class="by">proposed by ${esc(p.by)}</div>
                 <div class="ings">${ings || `<span class="ing">just dough, apparently</span>`}</div>
-                ${count ? `<div class="voters">❤️ ${Object.values(votes).map(esc).join(", ")}</div>` : ""}
+                ${count ? `<div class="voters">loved by ${Object.values(votes).map(esc).join(", ")}</div>` : ""}
               </div>
+              <button class="vote ${mine ? "on" : ""}" data-vote="${id}" aria-pressed="${mine}" title="${mine ? "Remove your vote" : "Vote for this one"}"><span class="heart">${mine ? "♥" : "♡"}</span><b>${count}</b></button>
             </div>`;
           })
           .join("")
-      : `<p class="empty">No pizzas proposed yet.</p>`;
+      : `<p class="empty">No pizzas yet. Dream one up above! 💭</p>`;
   }
 
   // ── Actions ──
@@ -227,7 +270,7 @@ function startParty(code) {
     await store.add("items", { name, category: $("item-cat").value, by, uid, createdAt: Date.now(), ...(amount && { amount }) });
     $("item-name").value = "";
     $("item-amount").value = "";
-    toast(`Thanks ${by}! ${name} added.`);
+    toast(`Yay, thanks ${by}! ${name} added 💛`);
   });
 
   $("pizza-form").addEventListener("submit", async (e) => {
@@ -240,7 +283,7 @@ function startParty(code) {
     await store.add("pizzas", { name, by, uid, ingredients, createdAt: Date.now(), votes: { [uid]: by } });
     $("pizza-name").value = "";
     document.querySelectorAll("#builder input:checked").forEach((i) => (i.checked = false));
-    toast(`${name} is on the menu 🍕`);
+    toast(`${name} is in the oven 🍕🔥`);
   });
 
   $("edit-meta").addEventListener("click", async () => {
