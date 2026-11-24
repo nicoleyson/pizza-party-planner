@@ -4,6 +4,25 @@ A tiny, free website for pizza-making parties. Send friends one link, and everyo
 
 **Live:** <https://nicoleyson.github.io/pizza-party-planner/>
 
+![A party page: the name and date on a paper card over a red gingham tablecloth, with the list of what everyone is bringing below](docs/screenshots/desktop.png)
+
+| Build a pizza and watch it draw itself | One vote can move the cut line |
+|---|---|
+| <img src="docs/screenshots/build-a-pizza.gif" width="300" alt="Typing a pizza name, ticking ingredients as the drawing fills in, then putting it in the oven so it lands on the table"> | <img src="docs/screenshots/vote-moves-the-cut.gif" width="300" alt="Voting for Fungi Fiesta lifts it above the line, and the tally shows Hot Honey Situation getting cut"> |
+
+<details>
+<summary>More screenshots</summary>
+
+| On the table | The tally | Pick any emoji |
+|---|---|---|
+| <img src="docs/screenshots/phone-table.png" width="240" alt="Three pizza tickets with Vote buttons, a crown on the leader, and a line under the two that get made"> | <img src="docs/screenshots/phone-tally.png" width="240" alt="Vote bars for each pizza with who voted, and a dashed cut line above the one that misses out"> | <img src="docs/screenshots/phone-picker.png" width="240" alt="A searchable emoji picker grouped into veggies, meat, cheese and more"> |
+
+![Dark mode: the same paper cards on a walnut wood table](docs/screenshots/desktop-dark.png)
+
+</details>
+
+*Screenshots use demo mode with a made-up party.*
+
 ## What it does
 
 **For guests**
@@ -145,3 +164,4 @@ Worth checking in Firebase and Google Cloud:
 | `tests/` | `npm test`: helpers, drawings, and checks that the rules stay strict. `npm run test:rules`: the rules against the Firebase emulator |
 | `firebase.json` | Only tells the emulator where the rules are (`npm run test:rules`) |
 | `.github/workflows/pages.yml` | Tests, builds `config.js` from secrets, and deploys |
+| `docs/screenshots/` | The pictures in this README (not part of the site) |
