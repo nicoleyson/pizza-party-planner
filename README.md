@@ -122,7 +122,7 @@ Worth checking in Firebase and Google Cloud:
 | `lib.js` | Small helpers: party codes, escaping, grouping ingredients, ranking pizzas |
 | `pie.js` | The pizza drawings: sauce colors, cheese, topping dots and icons |
 | `style.css` | The sticker-book look |
-| `confetti.js` | 🎉 The background: confetti that falls as you scroll, plus party poppers. It holds still for people who turn on "reduce motion" |
+| `confetti.js` | 🎉 The background: confetti (and a few little 🎉) that falls as you scroll. It holds still for people who turn on "reduce motion" |
 | `config.example.js` | Template for your `config.js` (Firebase settings) |
 | `database.rules.json` | Firebase security rules: paste these into the Rules tab |
 | `tests/` | `npm test`: helpers, drawings, and checks that the rules stay strict |

@@ -1,5 +1,5 @@
 // 🎉 Party background: confetti that drifts down, sways and tumbles as you
-// scroll, plus two party poppers bursting next to the top card.
+// scroll, with a few little 🎉 floating along with it.
 // Purely decorative: hidden from screen readers, never catches clicks, and it
 // holds still for people who ask their device to reduce motion.
 
@@ -28,26 +28,21 @@ function build() {
   const rand = seeded(2024);
   layer.textContent = "";
   height = innerHeight + 80;
-  const count = Math.round(Math.min(110, Math.max(36, (innerWidth * innerHeight) / 12000)));
+  const count = Math.round(Math.min(80, Math.max(28, (innerWidth * innerHeight) / 15000)));
   pieces = Array.from({ length: count }, () => {
     const depth = 0.35 + rand() * 0.65; // 1 = closest: bigger, brighter, faster
     const el = document.createElement("i");
     const kind = rand();
     const color = COLORS[Math.floor(rand() * COLORS.length)];
-    if (kind < 0.62) {
+    if (kind < 0.7) {
       el.className = "cf cf-paper";
       el.style.width = `${(8 + rand() * 4) * depth + 3}px`;
       el.style.height = `${(15 + rand() * 7) * depth + 5}px`;
-      el.style.background = color;
-    } else if (kind < 0.84) {
+    } else {
       el.className = "cf cf-dot";
       el.style.width = el.style.height = `${10 * depth + 4}px`;
-      el.style.background = color;
-    } else {
-      el.className = "cf cf-curl";
-      el.style.width = el.style.height = `${18 * depth + 8}px`;
-      el.style.color = color;
     }
+    el.style.background = color;
     el.style.opacity = (0.45 + depth * 0.5).toFixed(2);
     layer.append(el);
     return {
@@ -62,6 +57,29 @@ function build() {
       turn: rand() * 360,
     };
   });
+  // A few small 🎉 sprinkled in. They float and tilt but don't flip like paper.
+  const party = seeded(77);
+  const emojiCount = Math.round(Math.min(8, Math.max(3, (innerWidth * innerHeight) / 180000)));
+  for (let i = 0; i < emojiCount; i++) {
+    const depth = 0.5 + party() * 0.5;
+    const el = document.createElement("i");
+    el.className = "cf cf-emoji";
+    el.textContent = "🎉";
+    el.style.fontSize = `${Math.round(15 + depth * 11)}px`;
+    layer.append(el);
+    pieces.push({
+      el,
+      // spread them out: one per column band, so they never bunch up
+      x: ((i + 0.2 + party() * 0.6) / emojiCount) * innerWidth,
+      y: party() * height,
+      fall: 0.1 + depth * 0.3,
+      sway: 8 + party() * 10,
+      phase: party() * Math.PI * 2,
+      spin: (party() - 0.5) * 0.08,
+      flip: 0,
+      turn: (party() - 0.5) * 40,
+    });
+  }
   draw();
 }
 
@@ -85,37 +103,5 @@ addEventListener("scroll", () => {
 let resizeTimer;
 addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(build, 150); });
 still.addEventListener?.("change", draw);
-
-// ── Party poppers next to the top card (wide screens only, see style.css) ──
-const POPPER = `<svg viewBox="0 0 200 200" width="190" height="190" aria-hidden="true">
-  <g fill="none" stroke-linecap="round" stroke-width="4.5">
-    <path d="M86 104 q8 -34 34 -44 t30 -46" stroke="#ff7aa2"/>
-    <path d="M96 114 q28 -14 46 -6 t42 -22" stroke="#5bb6f0"/>
-    <path d="M80 96 q-8 -28 8 -48 t6 -42" stroke="#4fc29a"/>
-  </g>
-  <g>
-    <rect x="128" y="74" width="8" height="15" rx="1.5" fill="#ef5b45" transform="rotate(30 132 81)"/>
-    <rect x="158" y="96" width="8" height="15" rx="1.5" fill="#ffc94a" transform="rotate(-40 162 103)"/>
-    <rect x="112" y="34" width="7" height="14" rx="1.5" fill="#a98bf5" transform="rotate(65 115 41)"/>
-    <rect x="170" y="58" width="7" height="14" rx="1.5" fill="#4fc29a" transform="rotate(15 173 65)"/>
-    <rect x="146" y="128" width="7" height="14" rx="1.5" fill="#ff7aa2" transform="rotate(-70 149 135)"/>
-    <circle cx="146" cy="50" r="5" fill="#5bb6f0"/>
-    <circle cx="132" cy="112" r="4.5" fill="#ffc94a"/>
-    <circle cx="100" cy="22" r="4" fill="#ef5b45"/>
-    <circle cx="184" cy="90" r="4" fill="#a98bf5"/>
-  </g>
-  <g stroke="#4a2c22" stroke-width="4" stroke-linejoin="round">
-    <path d="M26 182 L60 96 L110 140 Z" fill="#ffc94a"/>
-    <path d="M38 152 L72 118 M48 126 L64 112" stroke="#ef5b45" stroke-width="7" stroke-linecap="round"/>
-    <path d="M26 182 L60 96 L110 140 Z" fill="none"/>
-    <ellipse cx="85" cy="118" rx="34" ry="9" transform="rotate(42 85 118)" fill="#ef5b45"/>
-  </g>
-</svg>`;
-const poppers = document.createElement("div");
-poppers.className = "poppers";
-poppers.style.display = "none"; // style.css shows them on wide screens; stays hidden if the stylesheet is stale
-poppers.setAttribute("aria-hidden", "true");
-poppers.innerHTML = `<div class="popper left">${POPPER}</div><div class="popper right">${POPPER}</div>`;
-document.body.prepend(poppers);
 
 build();

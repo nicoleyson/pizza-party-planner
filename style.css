@@ -37,15 +37,7 @@ body {
 .cf { position: absolute; left: 0; top: 0; display: block; will-change: transform; }
 .cf-paper { border-radius: 1.5px; }
 .cf-dot { border-radius: 50%; }
-.cf-curl { border: 3px solid currentColor; border-color: currentColor currentColor transparent transparent; border-radius: 50%; }
-
-/* party poppers bursting beside the top card, on screens wide enough to fit them */
-.poppers { position: absolute; top: 96px; left: 0; right: 0; height: 0; z-index: -1; pointer-events: none; display: none; }
-.popper { position: absolute; width: 190px; }
-.popper svg { display: block; width: 100%; height: auto; }
-.popper.left { right: calc(50% + 352px); }
-.popper.right { left: calc(50% + 352px); transform: scaleX(-1); }
-@media (min-width: 1150px) { .poppers { display: block !important; } }
+.cf-emoji { line-height: 1; opacity: .85; }
 
 /* striped pizzeria awning with a scalloped edge */
 .awning {
