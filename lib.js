@@ -55,3 +55,33 @@ export function groupItems(entries) {
   }
   return [...groups.values()];
 }
+
+// "2 cups" + "1 cup" + "lots" (Nicole) -> "3 cups + lots (Nicole)".
+// Only says something when at least two amounts in the same unit add up; otherwise "".
+const NUM = /^(\d+)\/(\d+)|^(\d+(?:\.\d+)?)(?:\s+(\d+)\/(\d+))?/;
+const singular = (u) => u.replace(/(x|sh|ch|ss)es$/, "$1").replace(/([^s])s$/, "$1");
+export function totalAmount(entries) {
+  const units = new Map(); // key -> { sum, count, plural }
+  const vague = [];
+  for (const [, it] of entries) {
+    const amt = String(it.amount || "").trim();
+    if (!amt) continue;
+    const m = amt.match(NUM);
+    if (!m) { vague.push(`${amt} (${String(it.by || "").trim()})`); continue; }
+    const n = m[1] ? m[1] / m[2] : +m[3] + (m[4] ? m[4] / m[5] : 0);
+    const unit = amt.slice(m[0].length).trim().toLowerCase().replace(/\s+/g, " ");
+    const key = singular(unit);
+    const u = units.get(key) || { sum: 0, count: 0, plural: "" };
+    u.sum += n;
+    u.count++;
+    if (unit !== key) u.plural = unit;
+    units.set(key, u);
+  }
+  if (![...units.values()].some((u) => u.count > 1)) return "";
+  const nums = [...units].map(([key, { sum, plural }]) => {
+    const n = +sum.toFixed(2);
+    const word = n === 1 || !key ? key : plural || (key.length > 2 ? key.replace(/(x|sh|ch|s)$/, "$1e") + "s" : key);
+    return word ? `${n} ${word}` : `${n}`;
+  });
+  return [...nums, ...vague].join(" + ");
+}

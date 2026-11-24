@@ -1,5 +1,5 @@
 import { pieHTML, ICONS, safeIcon, SAUCE_LOOKS, CHEESE_LOOKS } from "./pie.js";
-import { parseCode, newCode, esc, cleanIds, voteCount, rankPizzas, groupItems, ingredientKey } from "./lib.js";
+import { parseCode, newCode, esc, cleanIds, voteCount, rankPizzas, groupItems, ingredientKey, totalAmount } from "./lib.js";
 
 const CATS = { sauce: "Sauces", cheese: "Cheeses", topping: "Toppings", other: "Dough / drinks / other" };
 const EMOJI = { sauce: "🍅", cheese: "🧀", topping: "✨", other: "🥖" };
@@ -341,7 +341,8 @@ function startParty(code) {
               if (editing(e)) return itemEditor(e[0], e[1], drafts);
               return `<li><span>${name}${bringer(e)}</span>${controls(e) || meToo}</li>`;
             }
-            return `<li class="group"><div class="g-head"><span>${name}<span class="count">×${g.entries.length}</span></span>${meToo}</div><ul class="bringers">${g.entries
+            const total = totalAmount(g.entries);
+            return `<li class="group"><div class="g-head"><span>${name}<span class="count">×${g.entries.length}</span></span>${meToo}</div>${total ? `<div class="total">= ${esc(total)}</div>` : ""}<ul class="bringers">${g.entries
               .map((e) => (editing(e) ? itemEditor(e[0], e[1], drafts) : `<li><span>${bringer(e)}</span>${controls(e)}</li>`))
               .join("")}</ul></li>`;
           })
