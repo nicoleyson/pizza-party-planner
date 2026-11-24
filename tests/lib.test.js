@@ -166,3 +166,81 @@ test("totalAmount stays quiet when there's nothing to add up", async () => {
   assert.equal(totalAmount([e("Nicole", "lots"), e("Damian", "some")]), "");
   assert.equal(totalAmount([e("Sam", "2 cups"), e("Alex", "1 lb")]), "");
 });
+
+test("partyEndsAt: a party wraps up at midnight after its day", async () => {
+  const { partyEndsAt } = await import("../lib.js");
+  assert.equal(partyEndsAt("2026-12-05"), new Date(2026, 11, 6).getTime());
+  assert.equal(partyEndsAt("2026-12-31"), new Date(2027, 0, 1).getTime());
+  for (const bad of ["", null, undefined, "2026-13-01", "2026-02-30", "12/05/2026", "2026-12-5"]) assert.equal(partyEndsAt(bad), null, `${bad}`);
+});
+
+test("isOver: only parties with a date that has passed are over", async () => {
+  const { isOver } = await import("../lib.js");
+  assert.equal(isOver({}), false, "old parties without a date never lock");
+  assert.equal(isOver(undefined), false);
+  assert.equal(isOver({ endsAt: 1000 }, 999), false);
+  assert.equal(isOver({ endsAt: 1000 }, 1000), true);
+  assert.equal(isOver({ endsAt: "1000" }, 5000), false, "junk is ignored");
+});
+
+test("todayISO pads months and days", async () => {
+  const { todayISO } = await import("../lib.js");
+  assert.equal(todayISO(new Date(2026, 0, 7)), "2026-01-07");
+});
+
+test("once a party's date has passed, the rules lock everything but the host's settings", async () => {
+  const { DATE_RE } = await import("../lib.js");
+  const rules = JSON.parse(readFileSync(new URL("../database.rules.json", import.meta.url), "utf8"));
+  const p = rules.rules.parties.$party;
+  const lock = /!root\.child\('parties'\)\.child\(\$party\)\.child\('meta'\)\.child\('endsAt'\)\.exists\(\) \|\| now < /;
+  const writes = {
+    people: p.people.$uid, items: p.items.$id, diets: p.diets.$id, pizzas: p.pizzas.$id,
+    "pizza name": p.pizzas.$id.name, votes: p.pizzas.$id.votes.$voter, "pizza look": p.pizzas.$id.look,
+  };
+  for (const [what, node] of Object.entries(writes)) assert.match(node[".write"], lock, `${what} must lock after the party`);
+  assert.doesNotMatch(p.meta[".write"], /endsAt/, "the host must always be able to change the date to reopen");
+  assert.ok(p.meta.date[".validate"].includes(DATE_RE.toString()), "date pattern differs from database.rules.json");
+  assert.match(p.meta.endsAt[".validate"], /isNumber\(\)/);
+});
+
+test("?demo only switches to demo mode on your own computer", async () => {
+  const { localDemo } = await import("../lib.js");
+  assert.equal(localDemo({ hostname: "localhost", search: "?demo" }), true);
+  assert.equal(localDemo({ hostname: "127.0.0.1", search: "?x=1&demo" }), true);
+  assert.equal(localDemo({ hostname: "localhost", search: "" }), false);
+  assert.equal(localDemo({ hostname: "nicoleyson.github.io", search: "?demo" }), false, "never on the live site");
+  assert.equal(localDemo({ hostname: "localhost.evil.com", search: "?demo" }), false);
+  assert.equal(localDemo(undefined), false);
+});
+
+test("dark mode hangs off data-theme, set by theme.js before the page draws", () => {
+  const css = readFileSync(new URL("../style.css", import.meta.url), "utf8");
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(css, /:root\[data-theme="dark"\]/);
+  const head = html.slice(0, html.indexOf("</head>"));
+  assert.match(head, /<script src="theme\.js"><\/script>/, "theme.js must load in <head>, not as a deferred module");
+  for (const c of ["light", "dark"]) assert.match(html, new RegExp(`data-theme-choice="${c}"`));
+  assert.doesNotMatch(html, /data-theme-choice="auto"/, "no Auto: the site is light unless you pick Dark");
+});
+
+test("sauces and cheeses get a sensible icon when nobody picked one", async () => {
+  const { guessIcon, ICONS, safeIcon } = await import("../pie.js");
+  assert.equal(guessIcon("Garlic", "sauce"), "🧄");
+  assert.equal(guessIcon("Red", "sauce"), "🍅");
+  assert.equal(guessIcon("Basil pesto", "sauce"), "🌿");
+  assert.equal(guessIcon("Cotija", "cheese"), "🧀");
+  assert.equal(guessIcon("Pepperoni", "topping"), "", "toppings keep their color dots unless someone picks an icon");
+  assert.equal(safeIcon("🇲🇽"), "🇲🇽");
+  for (const [e] of ICONS) assert.ok(e.length <= 8, `${e} must fit the database's 8-character icon limit`);
+});
+
+test("the host's pizza goal is a whole number from 1 to 50, or not set", async () => {
+  const { pizzaGoal } = await import("../lib.js");
+  assert.equal(pizzaGoal({ pizzaGoal: 4 }), 4);
+  assert.equal(pizzaGoal({}), 0, "parties without a goal keep working");
+  assert.equal(pizzaGoal(undefined), 0);
+  for (const bad of [0, -1, 2.5, 51, "4", null]) assert.equal(pizzaGoal({ pizzaGoal: bad }), 0);
+  const rules = JSON.parse(readFileSync(new URL("../database.rules.json", import.meta.url), "utf8"));
+  const meta = rules.rules.parties.$party.meta;
+  assert.match(meta.pizzaGoal[".validate"], /newData\.isNumber\(\)/, "the database has to accept pizzaGoal, or saving it fails");
+});

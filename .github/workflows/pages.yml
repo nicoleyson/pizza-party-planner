@@ -56,10 +56,10 @@ jobs:
       - name: Collect site files
         run: |
           mkdir _site
-          cp index.html app.js lib.js pie.js style.css confetti.js config.js config.example.js _site/
+          cp index.html app.js lib.js pie.js morph.js theme.js style.css config.js config.example.js _site/
           # Stamp this version on the page's links so browsers never mix old and new files
           v="${GITHUB_SHA::8}"
-          sed -i -E "s#(href|src)=\"(style\.css|app\.js|confetti\.js)\"#\1=\"\2?v=$v\"#g" _site/index.html
+          sed -i -E "s#(href|src)=\"(style\.css|app\.js|theme\.js)\"#\1=\"\2?v=$v\"#g" _site/index.html
           grep -q "style.css?v=$v" _site/index.html
 
       - uses: actions/configure-pages@v6

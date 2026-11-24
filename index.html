@@ -11,45 +11,56 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍕</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sniglet:wght@400;800&family=Nunito:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shrikhand&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
 <link rel="stylesheet" href="style.css">
+<script src="theme.js"></script>
 </head>
 <body>
-<div class="awning" aria-hidden="true"></div>
+<div class="topbar">
+  <div class="theme-switch" role="group" aria-label="Color theme">
+    <button type="button" data-theme-choice="light" aria-pressed="true">Light</button>
+    <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+  </div>
+</div>
 <p id="mode" class="mode" hidden></p>
 
 <!-- Shown until someone signs in -->
 <div id="signin" hidden>
-  <header>
-    <div class="hero-pie" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M12 27 Q50 13 88 27 L54 91 Q50 98 46 91 Z" fill="#ffd25e" stroke="#4a2c22" stroke-width="3.5" stroke-linejoin="round"/><path d="M8 25 Q50 3 92 25 Q95 35 86 35 Q50 19 14 35 Q5 35 8 25 Z" fill="#e8a25a" stroke="#4a2c22" stroke-width="3.5" stroke-linejoin="round"/><circle cx="27" cy="42" r="5.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="73" cy="42" r="5.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="50" cy="80" r="4.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="45" cy="56" r="6" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><path d="M58 44 q8 -2 9 6 q-8 2 -9 -6z" fill="#6fb35c" stroke="#4a2c22" stroke-width="2" stroke-linejoin="round"/></svg></div>
+  <header class="board">
     <h1>Pizza Party Planner</h1>
     <p class="sub">Sign in so everyone knows who's bringing what.</p>
     <button type="button" class="google-btn" id="google-signin"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Sign in with Google</button>
-    <p class="fine">We only use your name and photo so friends can see who's coming. Your email is never shown to other guests.</p>
+    <p class="fine">Friends see your name and photo so they know who's coming. Your email stays hidden from other guests.</p>
   </header>
 </div>
 
 <!-- Shown when there's no party code in the link -->
 <div id="gate" hidden>
-  <header><div class="hero-pie" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M12 27 Q50 13 88 27 L54 91 Q50 98 46 91 Z" fill="#ffd25e" stroke="#4a2c22" stroke-width="3.5" stroke-linejoin="round"/><path d="M8 25 Q50 3 92 25 Q95 35 86 35 Q50 19 14 35 Q5 35 8 25 Z" fill="#e8a25a" stroke="#4a2c22" stroke-width="3.5" stroke-linejoin="round"/><circle cx="27" cy="42" r="5.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="73" cy="42" r="5.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="50" cy="80" r="4.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="45" cy="56" r="6" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><path d="M58 44 q8 -2 9 6 q-8 2 -9 -6z" fill="#6fb35c" stroke="#4a2c22" stroke-width="2" stroke-linejoin="round"/></svg></div><h1>Pizza Party Planner</h1><p class="sub">Got an invite link? Just open it. Or paste the party code here.</p></header>
+  <header class="board">
+    <h1>Pizza Party Planner</h1>
+    <p class="sub">Got an invite link? Open it, or paste the party code here.</p>
+  </header>
   <main>
-    <section>
-      <h2><span class="h-emoji">💌</span> Join a party</h2>
+    <section class="ticket">
+      <h2><span class="h-emoji" aria-hidden="true">💌</span>Join a party</h2>
       <form id="join-form" class="row">
-        <input id="join-code" placeholder="party code or invite link" required aria-label="Party code">
+        <input id="join-code" placeholder="Party code or invite link" required aria-label="Party code">
         <button>Join</button>
       </form>
     </section>
-    <section id="host-section">
-      <h2><span class="h-emoji">🎉</span> Host a new party</h2>
+    <section class="ticket" id="host-section">
+      <h2><span class="h-emoji" aria-hidden="true">🎉</span>Host a new party</h2>
       <div id="not-host" class="not-host" role="alert" hidden>
-        <p>🔒 <b>You're not authorized to host parties.</b></p>
+        <p><b>You're not on the hosts list.</b></p>
         <p>You're signed in as <b id="not-host-email"></b>. Ask the site owner to add you as a host. You can still join any party you're invited to.</p>
       </div>
       <form id="new-form">
-        <input id="new-title" maxlength="60" placeholder="Party name (e.g. Sam's Pizza Night)" required aria-label="Party name">
-        <input id="new-details" maxlength="200" placeholder="When / where (optional)" aria-label="Details">
-        <button>Create party ✨</button>
+        <input id="new-title" maxlength="60" placeholder="Party name, like Sam's Pizza Night" required aria-label="Party name">
+        <input id="new-details" maxlength="200" placeholder="When and where (optional)" aria-label="When and where">
+        <label class="date-field">Party date <span class="opt">(optional: after this day the party wraps up and the page becomes a keepsake)</span>
+          <input type="date" id="new-date">
+        </label>
+        <button>Create party</button>
       </form>
     </section>
   </main>
@@ -57,96 +68,124 @@
 
 <!-- The party -->
 <div id="party" hidden>
-  <header>
-    <div class="hero-pie" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M12 27 Q50 13 88 27 L54 91 Q50 98 46 91 Z" fill="#ffd25e" stroke="#4a2c22" stroke-width="3.5" stroke-linejoin="round"/><path d="M8 25 Q50 3 92 25 Q95 35 86 35 Q50 19 14 35 Q5 35 8 25 Z" fill="#e8a25a" stroke="#4a2c22" stroke-width="3.5" stroke-linejoin="round"/><circle cx="27" cy="42" r="5.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="73" cy="42" r="5.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="50" cy="80" r="4.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="45" cy="56" r="6" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><path d="M58 44 q8 -2 9 6 q-8 2 -9 -6z" fill="#6fb35c" stroke="#4a2c22" stroke-width="2" stroke-linejoin="round"/></svg></div>
+  <header class="board">
+    <a href="#" id="leave" class="leave">Other party</a>
     <div id="meta-view">
-      <h1><span id="title">Pizza Party</span> <button class="ghost" id="edit-meta" title="Edit party name and details">✏️</button></h1>
+      <h1><span id="title">Pizza Party</span> <button class="ghost icon-btn" id="edit-meta" aria-label="Edit party name, details and date" data-tip="Edit party"><span>✏️</span></button></h1>
+      <p id="party-date" class="when" hidden></p>
       <p id="details" class="sub"></p>
-      <p id="invite-only" class="invite-only" hidden>🔒 invite-only</p>
+      <p id="invite-only" class="invite-only" hidden>🔒 Invite-only</p>
+      <div id="party-over" class="party-over" role="status" hidden>
+        <p><b>This party is over</b></p>
+        <p>Thanks for coming. Everything's saved here as a keepsake.</p>
+        <p id="over-host" hidden>You're the host: <button type="button" class="link" id="reopen">change the date</button> to reopen it.</p>
+      </div>
     </div>
     <form id="meta-form" class="meta-form" hidden>
       <input id="meta-title" maxlength="60" required aria-label="Party name" placeholder="Party name">
-      <input id="meta-details" maxlength="200" aria-label="When / where" placeholder="When / where (optional)">
+      <input id="meta-details" maxlength="200" aria-label="When and where" placeholder="When and where (optional)">
+      <label class="date-field">Party date <span class="opt">(optional: leave empty to keep it open)</span>
+        <input type="date" id="meta-date">
+      </label>
+      <label class="date-field">How many pizzas are we making? <span class="opt">(optional: the ones with the most votes get made)</span>
+        <input type="number" id="meta-goal" min="1" max="50" step="1" inputmode="numeric" placeholder="4">
+      </label>
       <div class="row"><button>Save</button><button type="button" class="secondary" id="meta-cancel">Cancel</button></div>
     </form>
+    <div id="people" class="people" aria-label="Who's coming" hidden></div>
     <div class="row wrap header-row">
-      <label class="me">Your name <input id="my-name" maxlength="40" placeholder="e.g. Sam" autocomplete="given-name"></label>
-      <button class="secondary" id="copy-link"><span class="emo">🔗</span>Copy invite link</button>
-      <button class="secondary" id="guest-btn" hidden><span class="emo">🔒</span>Guest list</button>
+      <label class="me">Your name <input id="my-name" maxlength="40" placeholder="Sam" autocomplete="given-name"></label>
+      <button class="secondary" id="copy-link">Copy invite link</button>
+      <button class="secondary" id="guest-btn" hidden>Guest list</button>
     </div>
     <div id="guest-panel" class="guest-panel" hidden>
       <label class="toggle"><input type="checkbox" id="guest-only"> <span><b>Invite-only</b>: only people on this list (and you) can see or join the party</span></label>
       <label class="guest-emails-label">Guest emails <span class="opt">(one per line, the Google address they sign in with)</span>
-        <textarea id="guest-emails" rows="5" placeholder="sam@gmail.com&#10;alex@gmail.com"></textarea>
+        <textarea id="guest-emails" rows="5" placeholder="nicole@gmail.com&#10;damian@gmail.com"></textarea>
       </label>
       <p class="fine">Only you can see this list. Guests never see each other's emails.</p>
+      <p id="guest-warn" class="guest-warn" role="alert" hidden></p>
       <div class="row"><button type="button" id="guest-save">Save</button><button type="button" class="secondary" id="guest-close">Close</button></div>
     </div>
-    <div id="people" class="people" hidden></div>
     <div id="not-invited" class="not-invited" hidden>
-      <p>🔒 This party is invite-only, and <b id="not-invited-email"></b> isn't on the guest list.</p>
+      <p>This party is invite-only, and <b id="not-invited-email"></b> isn't on the guest list.</p>
       <p>Ask the host to add you, or <button type="button" class="link" id="switch-account">try a different Google account</button>.</p>
     </div>
     <p id="account" class="account" hidden></p>
-    <a href="#" id="leave" class="leave">↩ other party</a>
   </header>
 
   <main>
-    <section>
-      <h2><span class="h-emoji">🧺</span> What are you bringing? <button type="button" class="list-btn" id="list-btn" aria-expanded="false" aria-controls="grocery" hidden></button></h2>
+    <section class="ticket" id="bring-section">
+      <h2><span class="h-emoji" aria-hidden="true">🧺</span>What are you bringing? <button type="button" class="list-btn" id="list-btn" aria-expanded="false" aria-controls="grocery" hidden></button></h2>
+      <p id="items-lede" class="lede" hidden></p>
       <div id="grocery" class="grocery" hidden></div>
+      <div id="items"></div>
       <form id="item-form" class="item-form">
+        <label>Ingredient
+          <input id="item-name" maxlength="60" placeholder="Fresh basil" required>
+        </label>
         <label>Type
           <select id="item-cat">
             <option value="sauce">🍅 Sauce</option>
             <option value="cheese">🧀 Cheese</option>
             <option value="topping" selected>✨ Topping</option>
-            <option value="other">🥖 Other</option>
+            <option value="other">🥖 Dough, drinks or other</option>
           </select>
         </label>
-        <label>Ingredient
-          <input id="item-name" maxlength="60" placeholder="e.g. fresh basil" required>
-        </label>
         <label class="f-amt"><span>How much <span class="opt">(optional)</span></span>
-          <input id="item-amount" maxlength="30" placeholder="e.g. 2 cups">
+          <input id="item-amount" maxlength="30" placeholder="2 cups">
         </label>
-        <label class="f-icon"><span>Pizza icon <span class="opt">(optional)</span></span>
-          <select id="item-icon"><option value="">✨ Auto</option></select>
+        <label class="f-icon"><span>Icon <span class="opt">(optional)</span></span>
+          <span class="icon-pick"><input type="hidden" id="item-icon" value=""><button type="button" class="icon-pick-btn" data-icon-pick aria-haspopup="dialog">✨ Auto</button></span>
         </label>
-        <button>Add ＋</button>
-      </form>
-      <p class="hint">Amounts can be in any unit (2 cups, a handful, lots 🤷). Icons are only needed if a topping looks off on the pizza drawings.</p>
-      <div id="items"></div>
-    </section>
-
-    <section>
-      <h2><span class="h-emoji">🥗</span> Dietary needs <small class="opt-pill">optional</small></h2>
-      <form id="diet-form" class="row diet-form">
-        <input id="diet-note" maxlength="80" placeholder="Only if you have one: vegetarian, nut allergy…" required aria-label="Dietary need">
         <button>Add</button>
       </form>
-      <ul id="diets" class="list diets"></ul>
+      <p class="hint">Amounts can be in any unit: 2 cups, a handful, lots. Pick an icon if the automatic one looks off. Topping icons also show up on the pizza drawings.</p>
     </section>
 
-    <section>
-      <h2><span class="h-emoji">👩‍🍳</span> Propose a pizza</h2>
+    <section class="note" id="diet-section">
+      <h2><span class="h-emoji" aria-hidden="true">🥗</span>Dietary needs <small class="opt-pill">optional</small></h2>
+      <ul id="diets" class="list diets"></ul>
+      <form id="diet-form" class="row diet-form">
+        <input id="diet-note" maxlength="80" placeholder="Vegetarian, nut allergy…" required aria-label="Dietary need">
+        <button>Add</button>
+      </form>
+    </section>
+
+    <section class="ticket" id="propose-section">
+      <div class="build-head">
+        <div><h2><span class="h-emoji" aria-hidden="true">👩‍🍳</span>Build a pizza</h2><p class="lede">Pick from what people are bringing.</p></div>
+        <div id="preview-pie" class="preview-pie" aria-hidden="true"></div>
+      </div>
       <form id="pizza-form">
-        <input id="pizza-name" maxlength="60" placeholder="Name your pizza (e.g. The Basil Instinct)" required aria-label="Pizza name">
+        <input id="pizza-name" maxlength="60" placeholder="Name your pizza, like The Basil Instinct" required aria-label="Pizza name">
         <div id="builder"></div>
         <button>Put it in the oven 🔥</button>
       </form>
     </section>
-
-    <section>
-      <h2><span class="h-emoji">🏆</span> The pizzas <small>tap ♥ to vote</small></h2>
+    <section class="table" id="table-section">
+      <div class="table-head"><h2><span class="h-emoji" aria-hidden="true">🍽️</span>On the table</h2><small class="vote-hint">Vote for every pizza you’d eat</small><small id="pizza-goal" class="pizza-goal" hidden></small></div>
       <div id="pizzas"></div>
     </section>
+
+    <section class="ticket tally-section" id="tally-section" hidden>
+      <h2><span class="h-emoji" aria-hidden="true">🗳️</span>The tally</h2>
+      <p id="tally-lede" class="lede"></p>
+      <ol id="tally" class="tally"></ol>
+    </section>
+
   </main>
 </div>
 
-<footer class="foot">baked with love &amp; extra cheese 🧀</footer>
+<footer class="foot">baked with love &amp; extra cheese</footer>
+<dialog id="icon-dialog" class="icon-dialog" aria-label="Pick an icon">
+  <div class="icon-dialog-head">
+    <input type="search" id="icon-search" placeholder="Search: garlic, wine, red…" aria-label="Search icons" autocomplete="off" enterkeyhint="done">
+    <button type="button" class="ghost icon-btn" id="icon-close" aria-label="Close" data-tip="Close"><span>✕</span></button>
+  </div>
+  <div id="icon-grid" class="icon-grid"></div>
+</dialog>
 <div id="toast" role="status"></div>
-<script type="module" src="confetti.js"></script>
 <script type="module" src="app.js"></script>
 </body>
 </html>

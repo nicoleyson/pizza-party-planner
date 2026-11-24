@@ -12,12 +12,14 @@ A tiny, free website for pizza-making parties. Send friends one link, and everyo
 - **🛒 My list:** a little button that opens your grocery run: just the things *you* signed up for, with amounts. Tick them off as you shop (ticks are saved only in your browser), or copy the list into your notes.
 - **Dietary needs (optional):** a short list for allergies or restrictions, so nobody gets surprised.
 - **Propose a pizza:** pick from the ingredients people are actually bringing, name it, and see it drawn live. 🎨 changes the sauce color and how much cheese there is. Anyone can rename a pizza.
-- **Vote:** tap ♥ on your favorites, one vote per person per pizza. The leader gets a 👑.
+- **Vote:** tap Vote on every pizza you’d eat, one vote per person per pizza. The leader gets a 👑.
+- **Pizza goal:** the host can set how many pizzas you're making (✏️ next to the party name). A line on the table marks the ones with enough votes to get made.
 
 **For hosts**
 - **Host a new party:** each party gets its own secret invite link.
-- ✏️ edits the party name and when/where.
-- **🔒 Guest list:** optionally make a party invite-only, so only the Google emails you list can open it, even with the link.
+- ✏️ edits the party name, when/where, and the **party date**.
+- **📅 Party date (optional):** after midnight at the end of that day, the party wraps up. The page becomes a read-only keepsake: nobody can add, change, vote or join, and the database rules enforce it. To reopen it, the host changes the date or clears it. Parties without a date stay open, just like before.
+- **🔒 Guest list:** optionally make a party invite-only, so only the Google emails you list can open it, even with the link. If people have already joined, you get a heads-up with their names before anyone is locked out.
 - Only people on your **hosts** list can create parties. Everyone else can join parties they're invited to, and gets a friendly "not authorized to host" message if they try to start one.
 
 **How it's built:** plain HTML/CSS/JS with no build step. It's hosted free on **GitHub Pages**, with data and Google sign-in from **Firebase** on the free Spark plan (no credit card needed).
@@ -52,6 +54,10 @@ Open <http://localhost:8765>. `config.js` is gitignored, so your keys and projec
 
 Without a `config.js`, the site runs in **demo mode**: no sign-in, and data saved only in your own browser. That's handy for trying out the design.
 
+Already have a `config.js` and want to test without touching real parties? Open <http://localhost:8765/?demo>. The `?demo` switch only works on your own computer (localhost), never on the live site.
+
+The **Light / Dark** switch at the top right picks the look. Light is the default, whatever your device is set to; Dark is remembered in that browser once you pick it.
+
 To run the tests (Node 20 or newer, no installs needed):
 
 ```bash
@@ -76,6 +82,8 @@ Every push to `main` runs the tests, builds `config.js` from the secrets, and pu
 3. Optional: **🔒 Guest list** → add friends' Google emails → turn on **Invite-only**.
 
 The invite link works like a password, so only share it with friends. If it leaks, turn on invite-only or host a new party.
+
+> **Updating from an older version?** Paste the new [`database.rules.json`](database.rules.json) into Firebase → Realtime Database → **Rules** and click **Publish** *before* you push the site. The old rules don't know about party dates, so creating or editing a party with a date would fail until they're updated. The new rules work fine with the old site, and existing parties aren't affected.
 
 To clean up old parties: Firebase → Realtime Database → **Data** → `parties` → delete the ones you don't need.
 
@@ -121,8 +129,9 @@ Worth checking in Firebase and Google Cloud:
 | `app.js` | Sign-in, the party screens, saving and live updates |
 | `lib.js` | Small helpers: party codes, escaping, grouping ingredients, ranking pizzas |
 | `pie.js` | The pizza drawings: sauce colors, cheese, topping dots and icons |
-| `style.css` | The sticker-book look |
-| `confetti.js` | 🎉 The background: confetti (and a few little 🎉) that falls as you scroll. It holds still for people who turn on "reduce motion" |
+| `style.css` | The look: a checkered tablecloth with paper order tickets on it, and a walnut table in dark mode (follows your device setting) |
+| `theme.js` | The Light / Dark switch. Loads first so the page never flashes the wrong theme |
+| `morph.js` | Updates lists in place when friends change things, so the page doesn't jump or lose what you're typing |
 | `config.example.js` | Template for your `config.js` (Firebase settings) |
 | `database.rules.json` | Firebase security rules: paste these into the Rules tab |
 | `tests/` | `npm test`: helpers, drawings, and checks that the rules stay strict |

@@ -79,30 +79,86 @@ export function sauceColor(name) {
   return SAUCES.find(([re]) => re.test(n))?.[1] ?? TOMATO;
 }
 
-// Icons people can pick when the auto-guess looks wrong.
-export const ICONS = [
-  // veggies
-  ["🍅", "tomato"], ["🫒", "olive"], ["🍄", "mushroom"], ["🧅", "onion"], ["🧄", "garlic"],
-  ["🫑", "bell pepper"], ["🌶️", "chili"], ["🌿", "herbs"], ["🌱", "sprouts / microgreens"], ["🥬", "leafy greens"],
-  ["🥦", "broccoli"], ["🍆", "eggplant"], ["🥒", "pickles / cucumber"], ["🫛", "peas"], ["🫘", "beans"],
-  ["🌽", "corn"], ["🥔", "potato"], ["🍠", "sweet potato"], ["🥕", "carrot"], ["🥑", "avocado"],
-  ["🫚", "ginger"],
-  // fruit
-  ["🍓", "strawberry"], ["🫐", "blueberries / berries"], ["🍒", "cherry"], ["🍇", "grapes"], ["🍍", "pineapple"],
-  ["🍑", "peach"], ["🍐", "pear"], ["🍎", "apple"], ["🍌", "banana"], ["🥭", "mango"],
-  ["🥝", "kiwi"], ["🍉", "watermelon"], ["🍊", "orange"], ["🍋", "lemon"], ["🥥", "coconut"],
-  // meat & seafood
-  ["🥓", "bacon"], ["🍗", "chicken / turkey"], ["🍖", "meat"], ["🥩", "steak"], ["🌭", "sausage"],
-  ["🦐", "shrimp"], ["🦀", "crab"], ["🦞", "lobster"], ["🦑", "squid / calamari"], ["🐙", "octopus"],
-  ["🐟", "fish"], ["🥚", "egg"],
-  // everything else
-  ["🧀", "extra cheese"], ["🍞", "bread / stuffing"], ["🍟", "fries"], ["🥨", "pretzel"], ["🧆", "falafel"],
-  ["🥜", "nuts"], ["🌰", "chestnut"], ["🍯", "honey"], ["🧈", "butter"], ["🧂", "salt / spice"],
-  ["🍫", "chocolate"], ["🍪", "cookie"], ["🍬", "candy"], ["🍭", "lollipop"], ["🦄", "something magical"],
+// Icons people can pick when the automatic one looks off, in groups for the picker.
+// Each label doubles as search words ("mexico mexican"), so keep them lowercase-friendly.
+// Never remove one: saved ingredients may already use it.
+export const ICON_GROUPS = [
+  ["Veggies", [
+    ["🍅", "tomato"], ["🫒", "olive"], ["🍄", "mushroom"], ["🧅", "onion / shallot"], ["🧄", "garlic"],
+    ["🫑", "bell pepper"], ["🌶️", "chili / jalapeño / hot pepper"], ["🌿", "herbs / basil / oregano"], ["🌱", "sprouts / microgreens"], ["🥬", "leafy greens / spinach / kale / arugula"],
+    ["🥗", "salad"], ["🥦", "broccoli"], ["🍆", "eggplant"], ["🥒", "pickles / cucumber / zucchini"], ["🫛", "peas"],
+    ["🫘", "beans"], ["🌽", "corn"], ["🥔", "potato"], ["🍠", "sweet potato"], ["🥕", "carrot"],
+    ["🥑", "avocado / guacamole"], ["🫚", "ginger"], ["🌻", "sunflower seeds"], ["🌸", "edible flowers"], ["🍁", "maple"],
+  ]],
+  ["Fruit", [
+    ["🍓", "strawberry"], ["🫐", "blueberries / berries / cranberries"], ["🍒", "cherry"], ["🍇", "grapes / raisins"], ["🍍", "pineapple"],
+    ["🍑", "peach"], ["🍐", "pear"], ["🍎", "apple"], ["🍏", "green apple"], ["🍌", "banana"],
+    ["🥭", "mango"], ["🥝", "kiwi"], ["🍉", "watermelon"], ["🍈", "melon"], ["🍊", "orange"],
+    ["🍋", "lemon / lime"], ["🥥", "coconut"],
+  ]],
+  ["Meat & seafood", [
+    ["🥓", "bacon / pancetta"], ["🍗", "chicken"], ["🦃", "turkey"], ["🍖", "meat / bbq"], ["🥩", "steak / beef"],
+    ["🌭", "sausage / hot dog"], ["🐖", "pork / ham / prosciutto"], ["🐑", "lamb"], ["🦆", "duck"], ["🍤", "fried shrimp / tempura"],
+    ["🦐", "shrimp / prawns"], ["🦀", "crab"], ["🦞", "lobster"], ["🦑", "squid / calamari"], ["🐙", "octopus"],
+    ["🐟", "fish / anchovies / tuna"], ["🍣", "salmon / sushi"], ["🦪", "oyster / clams"], ["🥚", "egg"], ["🍳", "fried egg"],
+  ]],
+  ["Cheese, sauce & extras", [
+    ["🧀", "cheese"], ["🥛", "cream / milk / alfredo"], ["🧈", "butter"], ["🫙", "jar / pesto / spread"], ["🥫", "can / tomato sauce"],
+    ["🍯", "honey"], ["🧂", "salt / spice / seasoning"], ["🔥", "spicy / hot"], ["🫕", "fondue"], ["🥜", "nuts / peanuts"],
+    ["🌰", "chestnut / walnut"], ["🍞", "bread / stuffing / croutons"], ["🥖", "baguette / dough"], ["🫓", "flatbread / naan"], ["🥨", "pretzel"],
+    ["🍟", "fries"], ["🧆", "falafel"], ["🥟", "dumpling"], ["🍝", "pasta"], ["🍚", "rice"],
+  ]],
+  ["Sweets", [
+    ["🍫", "chocolate"], ["🍪", "cookie"], ["🍬", "candy"], ["🍭", "lollipop"], ["🍩", "donut"],
+    ["🧁", "cupcake"], ["🍰", "cake"], ["🎂", "birthday cake"], ["🥧", "pie"], ["🍨", "ice cream / gelato"],
+    ["🍮", "flan / pudding"], ["🍡", "mochi"], ["🍿", "popcorn"], ["🥞", "pancakes"], ["🧇", "waffle"],
+  ]],
+  ["Drinks", [
+    ["🥤", "soda / pop"], ["🧃", "juice box"], ["🧋", "boba / bubble tea"], ["☕", "coffee"], ["🍵", "tea / matcha"],
+    ["🍷", "wine / red wine"], ["🥂", "champagne / prosecco"], ["🍺", "beer"], ["🍸", "cocktail / martini"], ["🍹", "tropical drink"],
+    ["🥃", "whiskey"], ["🍶", "sake"], ["💧", "water"], ["🧊", "ice"], ["🥛", "milk"],
+  ]],
+  ["Fun", [
+    ["🦄", "something magical"], ["🎉", "party"], ["⭐", "star"], ["❤️", "love / heart"], ["💚", "green heart / vegan"],
+    ["🌈", "rainbow"], ["✨", "sparkle"], ["🍕", "pizza"], ["👑", "crown"], ["🎁", "surprise"],
+  ]],
+  ["Colors", [
+    ["🔴", "red"], ["🟠", "orange"], ["🟡", "yellow"], ["🟢", "green"], ["🔵", "blue"],
+    ["🟣", "purple"], ["🟤", "brown"], ["⚫", "black"], ["⚪", "white"], ["🩷", "pink"],
+    ["🟥", "red square"], ["🟧", "orange square"], ["🟨", "yellow square"], ["🟩", "green square"], ["🟦", "blue square"],
+    ["🟪", "purple square"], ["🟫", "brown square"], ["🧡", "orange heart"], ["💛", "yellow heart"], ["💙", "blue heart"],
+    ["💜", "purple heart"], ["🤎", "brown heart"], ["🖤", "black heart"], ["🤍", "white heart"], ["🩵", "light blue heart"],
+  ]],
+  ["Flags", [
+    ["🇮🇹", "italy / italian"], ["🇲🇽", "mexico / mexican"], ["🇫🇷", "france / french"], ["🇬🇷", "greece / greek"], ["🇪🇸", "spain / spanish"],
+    ["🇺🇸", "usa / american"], ["🇯🇵", "japan / japanese"], ["🇰🇷", "korea / korean"], ["🇨🇳", "china / chinese"], ["🇮🇳", "india / indian"],
+    ["🇹🇭", "thailand / thai"], ["🇻🇳", "vietnam / vietnamese"], ["🇵🇭", "philippines / filipino"], ["🇬🇧", "uk / british"], ["🇮🇪", "ireland / irish"],
+    ["🇩🇪", "germany / german"], ["🇳🇱", "netherlands / dutch"], ["🇨🇭", "switzerland / swiss"], ["🇵🇹", "portugal / portuguese"], ["🇹🇷", "turkey / turkish"],
+    ["🇱🇧", "lebanon / lebanese"], ["🇮🇱", "israel / israeli"], ["🇲🇦", "morocco / moroccan"], ["🇪🇹", "ethiopia / ethiopian"], ["🇳🇬", "nigeria / nigerian"],
+    ["🇯🇲", "jamaica / jamaican"], ["🇨🇺", "cuba / cuban"], ["🇵🇷", "puerto rico"], ["🇧🇷", "brazil / brazilian"], ["🇦🇷", "argentina / argentinian"],
+    ["🇵🇪", "peru / peruvian"], ["🇨🇴", "colombia / colombian"], ["🇸🇻", "el salvador / salvadoran"], ["🇨🇦", "canada / canadian"], ["🇦🇺", "australia / australian"],
+    ["🇳🇿", "new zealand"], ["🇮🇩", "indonesia / indonesian"], ["🇲🇾", "malaysia / malaysian"], ["🇸🇬", "singapore"], ["🇹🇼", "taiwan / taiwanese"],
+  ]],
 ];
+// Every icon once (milk sits in two groups), for the dropdown-free lookups below.
+export const ICONS = [...new Map(ICON_GROUPS.flatMap(([, list]) => list).map((x) => [x[0], x])).values()];
 const ICON_SET = new Set(ICONS.map(([e]) => e));
 // Only draw icons from our list, so nothing odd from the database ends up on the page.
 export const safeIcon = (s) => (ICON_SET.has(s) ? s : "");
+
+// A label icon for sauces and cheeses nobody picked one for: "Garlic" gets 🧄, not 🍅.
+// (Only used in lists and chips; the pie drawing colors sauce and cheese instead.)
+const SAUCE_ICONS = [
+  [/garlic|aioli/, "🧄"], [/pesto|basil|herb|chimichurri|green/, "🌿"], [/bbq|barbe/, "🍖"],
+  [/buffalo|hot|chil|spic|sriracha|harissa|diavol|arrabb/, "🌶️"], [/cream|alfredo|white|bechamel|ranch/, "🥛"],
+  [/honey/, "🍯"], [/olive oil|oil/, "🫒"], [/mushroom|truffle/, "🍄"],
+];
+export function guessIcon(name, category) {
+  const n = norm(name);
+  if (category === "sauce") return SAUCE_ICONS.find(([re]) => re.test(n))?.[1] ?? "🍅";
+  if (category === "cheese") return "🧀";
+  return "";
+}
 
 // Dots on a sunflower spiral so they spread evenly for any count.
 function spots(n) {
@@ -123,7 +179,7 @@ export function pieHTML(items, look = {}) {
   const dots = spots(n)
     .map(([x, y], k) => {
       const t = tops[k % tops.length];
-      const pos = `left:${x.toFixed(1)}%;top:${y.toFixed(1)}%`;
+      const pos = `left:${x.toFixed(1)}%;top:${y.toFixed(1)}%;--i:${k}`;
       const icon = safeIcon(t.icon);
       return icon
         ? `<i class="top icon" style="${pos}">${icon}</i>`

@@ -85,3 +85,45 @@ export function totalAmount(entries) {
   });
   return [...nums, ...vague].join(" + ");
 }
+
+// ── Party date ──
+// A party can have a date ("2026-12-05"). It wraps up at midnight after that day,
+// in the host's time zone, and from then on the page is a read-only keepsake.
+// Parties without a date never wrap up (that's every party made before dates existed).
+// How many pizzas the host plans to make: a whole number from 1 to 50, or 0 for "not set".
+export const pizzaGoal = (meta) => {
+  const n = meta?.pizzaGoal;
+  return Number.isInteger(n) && n >= 1 && n <= 50 ? n : 0;
+};
+
+export const DATE_RE = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
+
+// "2026-12-05" -> the moment that day ends (local midnight), or null if it isn't a real date.
+export function partyEndsAt(date) {
+  if (!DATE_RE.test(date || "")) return null;
+  const [y, m, d] = date.split("-").map(Number);
+  const day = new Date(y, m - 1, d);
+  if (day.getFullYear() !== y || day.getMonth() !== m - 1 || day.getDate() !== d) return null;
+  return new Date(y, m - 1, d + 1).getTime();
+}
+
+export const isOver = (meta, now = Date.now()) => typeof meta?.endsAt === "number" && now >= meta.endsAt;
+
+// "2026-12-05" -> "Saturday, December 5"
+export function formatPartyDate(date) {
+  if (!partyEndsAt(date)) return "";
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+}
+
+// Today as "YYYY-MM-DD" in local time (for the date picker's minimum).
+export function todayISO(now = new Date()) {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
+}
+
+// Local testing: http://localhost:8765/?demo runs the site in demo mode (no Google sign-in,
+// nothing read from or written to the real database, data kept in this browser only).
+// Only on your own computer, so the live site can't be switched into it.
+const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
+export const localDemo = (loc) => LOCAL_HOSTS.includes(loc?.hostname) && new URLSearchParams(loc?.search || "").has("demo");

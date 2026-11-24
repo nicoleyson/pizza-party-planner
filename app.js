@@ -1,7 +1,8 @@
-import { pieHTML, ICONS, safeIcon, SAUCE_LOOKS, CHEESE_LOOKS } from "./pie.js";
-import { parseCode, newCode, esc, cleanIds, voteCount, rankPizzas, groupItems, ingredientKey, totalAmount } from "./lib.js";
+import { pieHTML, ICONS, ICON_GROUPS, safeIcon, guessIcon, SAUCE_LOOKS, CHEESE_LOOKS } from "./pie.js";
+import { parseCode, newCode, esc, cleanIds, voteCount, rankPizzas, groupItems, ingredientKey, totalAmount, partyEndsAt, pizzaGoal, isOver, formatPartyDate, todayISO, localDemo } from "./lib.js";
+import { morph } from "./morph.js";
 
-const CATS = { sauce: "Sauces", cheese: "Cheeses", topping: "Toppings", other: "Dough / drinks / other" };
+const CATS = { sauce: "Sauces", cheese: "Cheeses", topping: "Toppings", other: "Dough, drinks and more" };
 const EMOJI = { sauce: "🍅", cheese: "🧀", topping: "✨", other: "🥖" };
 const PIZZA_CATS = ["sauce", "cheese", "topping"];
 const CAT_ONE = { sauce: "Sauce", cheese: "Cheese", topping: "Topping", other: "Other" };
@@ -25,11 +26,17 @@ let account = null; // { auth, au, user } once signed in with Google
 addEventListener("hashchange", () => location.reload());
 
 // ── Storage: Firebase if configured, otherwise this-browser-only demo ──
-const configured = firebaseConfig?.databaseURL && !firebaseConfig.databaseURL.includes("YOUR_");
+// ?demo on localhost forces demo mode even when config.js is set up (see localDemo in lib.js)
+const demo = localDemo(location);
+const configured = !demo && firebaseConfig?.databaseURL && !firebaseConfig.databaseURL.includes("YOUR_");
 if (!configured) {
   $("mode").hidden = false;
-  $("mode").textContent = "Demo mode: data is only saved in this browser. Add your Firebase config in config.js to share with friends.";
+  $("mode").textContent = demo
+    ? "Demo mode: no sign-in, and nothing here touches the real party data. Remove ?demo from the address to use the real site."
+    : "Demo mode: data is only saved in this browser. Add your Firebase config in config.js to share with friends.";
 }
+// Demo parties and real parties remember "the last party you opened" separately
+const LAST = demo ? "demoLastParty" : "lastParty";
 const db = configured ? await firebaseDb() : localDb();
 // Only real Google profile photos are ever shown (never arbitrary links from the database).
 const PHOTO_RE = /^https:\/\/lh3\.googleusercontent\.com\/[-\w./=~%]+$/;
@@ -103,7 +110,7 @@ function showSignIn(auth, au) {
 }
 
 // ── Start ──
-const code = parseCode(location.hash) || parseCode(localStorage.lastParty);
+const code = parseCode(location.hash) || parseCode(localStorage[LAST]);
 if (!db) {
   // waiting for Google sign-in
 } else if (code) {
@@ -134,6 +141,7 @@ function showGate() {
     if (!c) return toast("That doesn't look like a party code");
     location.hash = c;
   });
+  $("new-date").min = todayISO();
   $("new-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const c = newCode();
@@ -143,6 +151,7 @@ function showGate() {
         details: $("new-details").value.trim().slice(0, 200),
         uid,
         createdAt: Date.now(),
+        ...dateFields($("new-date").value),
       });
     } catch (err) {
       console.error(err);
@@ -158,7 +167,7 @@ function showGate() {
 
 // ── The party ──
 function startParty(code) {
-  localStorage.lastParty = code;
+  localStorage[LAST] = code;
   const ROOT = `parties/${code}`;
   // Saves that fail (offline, or blocked by the database rules) show a message instead of vanishing.
   const saved = (promise) =>
@@ -167,9 +176,17 @@ function startParty(code) {
       toast("Hmm, that didn't save 😕 Check your connection and try again.");
       throw err;
     });
+  // Once the party's over it's a keepsake: only the host's settings (name, date, guest list) can change.
+  // The database rules enforce this too.
+  const over = () => isOver(state.meta);
+  const locked = (p) => {
+    if (!over() || p.startsWith("meta") || p.startsWith("guests")) return false;
+    toast("This party's over, so it can't change anymore 🍕");
+    return true;
+  };
   const store = {
-    add: (p, obj) => saved(db.add(`${ROOT}/${p}`, obj)),
-    set: (p, val) => saved(db.set(`${ROOT}/${p}`, val)),
+    add: (p, obj) => (locked(p) ? Promise.resolve(null) : saved(db.add(`${ROOT}/${p}`, obj))),
+    set: (p, val) => (locked(p) ? Promise.resolve(null) : saved(db.set(`${ROOT}/${p}`, val))),
   };
   $("party").hidden = false;
 
@@ -186,16 +203,24 @@ function startParty(code) {
     return n;
   };
 
+  let copiedTimer;
   $("copy-link").addEventListener("click", async () => {
+    const btn = $("copy-link");
     const link = location.href.split("#")[0] + "#" + code;
-    try { await navigator.clipboard.writeText(link); toast("Invite link copied. Only share it with friends!"); }
-    catch { prompt("Copy this invite link:", link); }
+    try {
+      await navigator.clipboard.writeText(link);
+      btn.innerHTML = `<span class="emo">✅</span>Copied!`;
+      btn.classList.add("copied");
+      clearTimeout(copiedTimer);
+      copiedTimer = setTimeout(() => { btn.innerHTML = `<span class="emo">🔗</span>Copy invite link`; btn.classList.remove("copied"); }, 2000);
+      toast("Only share it with friends 🤫");
+    } catch { prompt("Copy this invite link:", link); }
   });
   // Who's signed in (Google), with a way to sign out
   if (account) {
     const u = account.user;
     $("account").hidden = false;
-    $("account").innerHTML = `Signed in as ${esc(u.displayName || u.email || "you")} · <button type="button" class="link" id="sign-out">sign out</button>`;
+    $("account").innerHTML = `Signed in as ${esc(u.displayName || u.email || "you")}. <button type="button" class="link" id="sign-out">Sign out</button>`;
     $("sign-out").addEventListener("click", async () => {
       await account.au.signOut(account.auth);
       location.reload();
@@ -211,11 +236,21 @@ function startParty(code) {
     $("guest-only").checked = state.meta.guestOnly === true;
     $("guest-emails").value = Object.values(state.guests || {}).filter((e) => typeof e === "string").sort().join("\n");
   }
+  // Turning on invite-only can lock out people who already joined, so ask once first.
+  let guestConfirm = false;
+  const resetGuestConfirm = () => {
+    guestConfirm = false;
+    $("guest-warn").hidden = true;
+    $("guest-save").textContent = "Save";
+  };
   $("guest-btn").addEventListener("click", () => {
     $("guest-panel").hidden = !$("guest-panel").hidden;
+    resetGuestConfirm();
     renderGuestPanel();
   });
-  $("guest-close").addEventListener("click", () => ($("guest-panel").hidden = true));
+  $("guest-close").addEventListener("click", () => { $("guest-panel").hidden = true; resetGuestConfirm(); });
+  $("guest-only").addEventListener("change", resetGuestConfirm);
+  $("guest-emails").addEventListener("input", resetGuestConfirm);
   $("guest-save").addEventListener("click", async () => {
     if (state.meta.uid !== uid) return;
     const emails = [...new Set($("guest-emails").value.split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter(Boolean))];
@@ -224,6 +259,17 @@ function startParty(code) {
     if (emails.length > 200) return toast("That's a lot of guests! Max 200.");
     const on = $("guest-only").checked;
     if (on && !emails.length) return toast("Add at least one guest email first");
+    const joinedNames = Object.entries(state.people).filter(([id]) => id !== uid).map(([, p]) => p.name).filter(Boolean);
+    if (on && state.meta.guestOnly !== true && joinedNames.length && !guestConfirm) {
+      guestConfirm = true;
+      const n = joinedNames.length;
+      $("guest-warn").textContent = `Heads up: ${n} ${n === 1 ? "person has" : "people have"} already joined (${joinedNames.join(", ")}). ` +
+        `Anyone whose Google email isn't on this list will lose access. Double-check, then tap again.`;
+      $("guest-warn").hidden = false;
+      $("guest-save").textContent = "Yes, make it invite-only";
+      return;
+    }
+    resetGuestConfirm();
     await store.set("guests", emails.length ? Object.fromEntries(emails.map((e) => [emailKey(e), e])) : null);
     await store.set("meta/guestOnly", on || null);
     $("guest-panel").hidden = true;
@@ -237,7 +283,7 @@ function startParty(code) {
   // Put yourself on the "who's coming" list (name + Google photo; never your email)
   const joinParty = () => {
     const name = nameInput.value.trim().slice(0, 40);
-    if (!name || !account) return;
+    if (!name || !account || over()) return;
     const photo = safePhoto(account.user.photoURL);
     const mine = state.people[uid];
     if (mine && mine.name === name && (mine.photo || "") === photo) return;
@@ -247,7 +293,7 @@ function startParty(code) {
 
   $("leave").addEventListener("click", (e) => {
     e.preventDefault();
-    localStorage.removeItem("lastParty");
+    localStorage.removeItem(LAST);
     location.hash = "";
     location.reload();
   });
@@ -268,17 +314,74 @@ function startParty(code) {
     Object.entries(state.items)
       .filter(([, it]) => it.category === cat)
       .sort((a, b) => a[1].name.localeCompare(b[1].name));
-  const iconOf = (it) => (it.category === "topping" ? safeIcon(it.icon) : "");
+  // The icon next to an ingredient's name: the one picked, else a guess (🧄 for garlic sauce), else its type's emoji
+  const iconOf = (it) => safeIcon(it.icon) || guessIcon(it.name, it.category) || EMOJI[it.category] || "";
+  const what = { item: "ingredient", pizza: "pizza", diet: "note" };
   const delBtn = (kind, id) =>
     armed === `${kind}:${id}`
       ? `<button class="ghost danger" data-del="${kind}:${id}">tap again to delete</button>`
-      : `<button class="ghost" data-del="${kind}:${id}" title="Delete">✕</button>`;
+      : `<button class="ghost icon-btn" data-del="${kind}:${id}" aria-label="Delete this ${what[kind]}" data-tip="Delete"><span>✕</span></button>`;
 
-  // Icon picker (toppings only, since that's what gets drawn as dots)
-  $("item-icon").insertAdjacentHTML("beforeend", ICONS.map(([e, label]) => `<option value="${e}">${e} ${label}</option>`).join(""));
-  const syncIconField = () => ($("item-form").querySelector(".f-icon").style.visibility = $("item-cat").value === "topping" ? "" : "hidden");
-  $("item-cat").addEventListener("change", syncIconField);
-  syncIconField();
+  // ── Icon picker: a searchable grid instead of a long dropdown ──
+  // Any ingredient can pick one (toppings also use it on the pizza drawings).
+  // The choice lives in a hidden input next to the button that opens the picker.
+  const shortLabel = (label) => { const w = label.split(" / ")[0]; return w[0].toUpperCase() + w.slice(1); };
+  const pickLabel = (v) => (safeIcon(v) ? `${v} ${shortLabel(ICONS.find(([e]) => e === v)[1])}` : "✨ Auto");
+  const iconPickHTML = (inputAttrs, v) =>
+    `<span class="icon-pick"><input type="hidden" ${inputAttrs} value="${safeIcon(v)}"><button type="button" class="icon-pick-btn" data-icon-pick aria-haspopup="dialog">${esc(pickLabel(v))}</button></span>`;
+  const setPick = (input, v) => {
+    input.value = safeIcon(v);
+    input.nextElementSibling.textContent = pickLabel(v);
+  };
+  let pickFor = null;
+  const dlg = $("icon-dialog");
+  const iconOpt = ([e, label], cur) =>
+    `<button type="button" class="icon-opt" data-icon="${e}" aria-label="${esc(label)}" aria-pressed="${e === cur}"><span>${e}</span><small>${esc(shortLabel(label))}</small></button>`;
+  function renderIconGrid() {
+    const q = $("icon-search").value.trim().toLowerCase();
+    const cur = pickFor?.value || "";
+    const auto = `<button type="button" class="icon-opt" data-icon="" aria-label="Auto: pick one for me" aria-pressed="${!cur}"><span>✨</span><small>Auto</small></button>`;
+    if (!q) {
+      $("icon-grid").innerHTML = `<div class="icon-opts">${auto}</div>` + ICON_GROUPS
+        .map(([group, list]) => `<h3>${esc(group)}</h3><div class="icon-opts">${list.map((x) => iconOpt(x, cur)).join("")}</div>`)
+        .join("");
+      return;
+    }
+    const hits = ICONS.filter(([, label]) => label.toLowerCase().includes(q));
+    $("icon-grid").innerHTML = hits.length
+      ? `<div class="icon-opts">${hits.map((x) => iconOpt(x, cur)).join("")}</div>`
+      : `<p class="icon-none">Nothing matches “${esc(q)}”. Try another word, or pick ✨ Auto.</p><div class="icon-opts">${auto}</div>`;
+  }
+  const choose = (v) => {
+    if (pickFor) setPick(pickFor, v);
+    dlg.close();
+  };
+  dlg.addEventListener("close", () => { pickFor?.nextElementSibling?.focus(); pickFor = null; });
+  document.addEventListener("click", (e) => {
+    const opener = e.target.closest("[data-icon-pick]");
+    if (opener) {
+      e.preventDefault();
+      pickFor = opener.previousElementSibling;
+      $("icon-search").value = "";
+      renderIconGrid();
+      dlg.showModal();
+      $("icon-grid").scrollTop = 0;
+      $("icon-search").focus();
+      return;
+    }
+    if (!dlg.open) return;
+    const opt = e.target.closest("[data-icon]");
+    if (opt) return choose(opt.dataset.icon);
+    if (e.target === dlg || e.target.closest("#icon-close")) dlg.close(); // tap outside, or ✕
+  });
+  $("icon-search").addEventListener("input", renderIconGrid);
+  $("icon-search").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    // Enter takes the first match
+    const first = $("icon-search").value.trim() && $("icon-grid").querySelector("[data-icon]");
+    if (first) choose(first.dataset.icon);
+  });
 
   function render() {
     const title = state.meta.title || "Pizza Party 🍕";
@@ -287,6 +390,14 @@ function startParty(code) {
     $("details").textContent = state.meta.details || "";
     // Only the browser that created the party can edit its name/details
     const isHost = state.meta.uid === uid;
+    const done = over();
+    const when = formatPartyDate(state.meta.date);
+    $("party-date").hidden = !when;
+    $("party-date").textContent = when;
+    $("party").classList.toggle("is-over", done);
+    $("party-over").hidden = !done;
+    $("over-host").hidden = !done || !isHost;
+    scheduleWrapUp();
     $("edit-meta").hidden = !isHost;
     if (!isHost) showMetaForm(false);
     $("guest-btn").hidden = !isHost || !account;
@@ -299,15 +410,24 @@ function startParty(code) {
     renderPizzas();
   }
 
+  // Re-draw the moment the party wraps up, even if nobody touches anything.
+  let wrapTimer;
+  function scheduleWrapUp() {
+    clearTimeout(wrapTimer);
+    const left = (state.meta.endsAt || 0) - Date.now();
+    if (left > 0 && left < 2 ** 31 - 1) wrapTimer = setTimeout(render, left + 500);
+  }
+  document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && state.meta.title && render());
+
   // Inline editor for your own ingredient. Keeps what you've typed if the list re-renders.
   function itemEditor(id, it, drafts) {
     const v = drafts || it;
     const opt = (val, label, cur) => `<option value="${val}" ${val === cur ? "selected" : ""}>${label}</option>`;
-    return `<li class="editing"><form class="item-edit" data-edit-form="${id}">
+    return `<li class="editing" data-key="edit-${id}"><form class="item-edit" data-edit-form="${id}">
       <select data-f="category" aria-label="Type">${Object.keys(CATS).map((c) => opt(c, `${EMOJI[c]} ${CAT_ONE[c]}`, v.category)).join("")}</select>
       <input data-f="name" maxlength="60" required value="${esc(v.name)}" aria-label="Ingredient">
       <input data-f="amount" maxlength="30" value="${esc(v.amount || "")}" placeholder="how much (optional)" aria-label="How much">
-      <select data-f="icon" aria-label="Pizza icon" ${v.category === "topping" ? "" : "hidden"}>${opt("", "✨ Auto", safeIcon(v.icon))}${ICONS.map(([e, l]) => opt(e, `${e} ${l}`, safeIcon(v.icon))).join("")}</select>
+      ${iconPickHTML('data-f="icon"', v.icon)}
       <div class="row edit-actions"><button>Save</button><button type="button" class="secondary" data-cancel-edit>Cancel</button></div>
     </form></li>`;
   }
@@ -319,37 +439,51 @@ function startParty(code) {
     const field = (f) => form?.querySelector(`[data-f="${f}"]`)?.value;
     const drafts = form ? { category: field("category"), name: field("name"), amount: field("amount"), icon: field("icon") } : null;
     const focused = form?.contains(document.activeElement) ? document.activeElement.dataset.f : null;
+    // Every pizza needs sauce and cheese, so an empty one shows up as a gap anyone can fill
+    const anything = Object.keys(state.items).length > 0;
+    const gaps = anything && !over() ? ["sauce", "cheese"].filter((cat) => !itemsIn(cat).length) : [];
+    $("items-lede").hidden = !gaps.length;
+    $("items-lede").textContent = gaps.length ? `Still missing: ${gaps.map((c) => CAT_ONE[c].toLowerCase()).join(" and ")}.` : "";
     const html = Object.entries(CATS)
       .map(([cat, label]) => {
         const list = itemsIn(cat);
+        if (gaps.includes(cat)) {
+          const thing = CAT_ONE[cat].toLowerCase();
+          return `<div class="cat gap" data-key="gap-${cat}"><h3 class="slip-head"><span><span class="emo">${EMOJI[cat]}</span>${label}</span><span class="n">nobody yet</span></h3>
+            <p>Every pizza needs ${thing === "sauce" ? "a sauce" : "cheese"}.</p>
+            <button type="button" data-bring="${cat}">I'll bring ${thing}</button></div>`;
+        }
         if (!list.length) return "";
         // Same-named ingredients from different people share one row
-        return `<div class="cat cat-${cat}"><h3><span class="emo">${EMOJI[cat]}</span>${label}</h3><ul class="list">${groupItems(list)
+        const groups = groupItems(list);
+        return `<div class="cat cat-${cat}" data-key="cat-${cat}"><h3 class="slip-head"><span><span class="emo">${EMOJI[cat]}</span>${label}</span><span class="n">${groups.length}</span></h3><ul class="list">${groups
           .map((g) => {
-            const icon = g.category === "topping" ? safeIcon(g.icon) : "";
-            const meToo = g.entries.some(([, it]) => it.uid === uid)
+            const icon = safeIcon(g.icon);
+            const meToo = over() || g.entries.some(([, it]) => it.uid === uid)
               ? ""
               : `<button class="ghost me-too" data-me-too="${g.entries[0][0]}" title="Bring some of this too">+ me too</button>`;
             const name = `${icon ? `<span class="item-icon">${icon}</span>` : ""}<span class="item-name">${esc(g.name)}</span>`;
             const bringer = ([id, it]) =>
-              `${it.amount ? `<span class="amt">${esc(it.amount)}</span>` : ""}<span class="who">from ${esc(it.by)}</span>`;
+              `${it.amount ? `<span class="amt">${esc(it.amount)}</span>` : ""}${it.uid === uid ? `<span class="who you">you</span>` : `<span class="who">${esc(it.by)}</span>`}`;
             const controls = ([id, it]) =>
-              it.uid === uid ? `<span class="mine"><button class="ghost" data-edit-item="${id}" title="Edit">✏️</button>${delBtn("item", id)}</span>` : "";
+              it.uid === uid && !over()
+                ? `<span class="mine"><button class="ghost icon-btn" data-edit-item="${id}" aria-label="Edit ${esc(it.name)}" data-tip="Edit"><span>✏️</span></button>${delBtn("item", id)}</span>`
+                : "";
             const editing = ([id, it]) => id === editingItem && it.uid === uid;
             if (g.entries.length === 1) {
               const e = g.entries[0];
               if (editing(e)) return itemEditor(e[0], e[1], drafts);
-              return `<li><span>${name}${bringer(e)}</span>${controls(e) || meToo}</li>`;
+              return `<li data-key="g-${esc(g.key)}"><span>${name}${bringer(e)}</span>${controls(e) || meToo}</li>`;
             }
             const total = totalAmount(g.entries);
-            return `<li class="group"><div class="g-head"><span>${name}<span class="count">×${g.entries.length}</span></span>${meToo}</div>${total ? `<div class="total">= ${esc(total)}</div>` : ""}<ul class="bringers">${g.entries
-              .map((e) => (editing(e) ? itemEditor(e[0], e[1], drafts) : `<li><span>${bringer(e)}</span>${controls(e)}</li>`))
+            return `<li class="group" data-key="g-${esc(g.key)}"><div class="g-head"><span>${name}<span class="count">×${g.entries.length}</span></span>${meToo}</div>${total ? `<div class="total">= ${esc(total)}</div>` : ""}<ul class="bringers">${g.entries
+              .map((e) => (editing(e) ? itemEditor(e[0], e[1], drafts) : `<li data-key="${e[0]}"><span>${bringer(e)}</span>${controls(e)}</li>`))
               .join("")}</ul></li>`;
           })
           .join("")}</ul></div>`;
       })
       .join("");
-    $("items").innerHTML = html || `<p class="empty">The table is empty… be the first to bring something! 🥺</p>`;
+    morph($("items"), html || `<p class="empty">${over() ? "Nobody signed up to bring anything." : "Nothing yet. Add the first thing below."}</p>`);
     if (focused) document.querySelector(`#items [data-edit-form] [data-f="${focused}"]`)?.focus();
   }
 
@@ -369,15 +503,15 @@ function startParty(code) {
     const left = mine.filter(([id]) => !got.has(id)).length;
     btn.hidden = !mine.length;
     if (!mine.length) { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); return; }
-    btn.innerHTML = left ? `<span class="emo">🛒</span>My list <b>${left}</b>` : `<span class="emo">🛒</span>All set ✓`;
+    morph(btn, left ? `<span class="emo">🛒</span>My list <b>${left}</b>` : `<span class="emo">🛒</span>All set ✓`);
     if (panel.hidden) return;
-    panel.innerHTML = `<div class="grocery-head"><b>Your grocery run</b><button type="button" class="ghost" id="grocery-copy"><span class="emo">📋</span>Copy</button></div>
+    morph(panel, `<div class="grocery-head"><b>Your grocery run</b><button type="button" class="ghost" id="grocery-copy"><span class="emo">📋</span>Copy</button></div>
       <ul>${mine
         .map(([id, it]) => {
-          const icon = iconOf(it) || EMOJI[it.category];
-          return `<li><label class="${got.has(id) ? "got" : ""}"><input type="checkbox" data-got="${id}" ${got.has(id) ? "checked" : ""}><span class="emo">${icon}</span><span class="g-name">${esc(it.name)}</span>${it.amount ? `<span class="amt">${esc(it.amount)}</span>` : ""}</label></li>`;
+          const icon = iconOf(it);
+          return `<li data-key="${id}"><label class="${got.has(id) ? "got" : ""}"><input type="checkbox" data-got="${id}" ${got.has(id) ? "checked" : ""}><span class="emo">${icon}</span><span class="g-name">${esc(it.name)}</span>${it.amount ? `<span class="amt">${esc(it.amount)}</span>` : ""}</label></li>`;
         })
-        .join("")}</ul>`;
+        .join("")}</ul>`);
   }
   $("list-btn").addEventListener("click", () => {
     const panel = $("grocery");
@@ -403,49 +537,63 @@ function startParty(code) {
   function renderPeople() {
     const list = Object.entries(state.people).sort((a, b) => (a[1].joinedAt || 0) - (b[1].joinedAt || 0));
     $("people").hidden = !list.length;
-    $("people").innerHTML = list.length
-      ? `<span class="people-label">Who's coming</span>` +
-        list
+    morph($("people"), list.length
+      ? list
           .map(([id, p]) => {
             const photo = safePhoto(p.photo);
             const face = photo
               ? `<img src="${esc(photo)}" alt="" referrerpolicy="no-referrer" loading="lazy">`
               : `<i class="initial">${esc((p.name || "?").trim().charAt(0).toUpperCase())}</i>`;
             const host = id === state.meta.uid ? `<b class="host-tag">host</b>` : "";
-            return `<span class="person">${face}${esc(p.name)}${host}</span>`;
+            return `<span class="person" data-key="${id}">${face}${esc(p.name)}${host}</span>`;
           })
           .join("")
-      : "";
+      : "");
   }
 
   function renderDiets() {
     const list = Object.entries(state.diets).sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0));
-    $("diets").innerHTML = list.length
+    morph($("diets"), list.length
       ? list
-          .map(([id, d]) => `<li><span><span class="item-name">${esc(d.by)}</span><span class="diet-note">${esc(d.note)}</span></span>${
-            d.uid === uid ? delBtn("diet", id) : ""
+          .map(([id, d]) => `<li data-key="${id}"><span><span class="item-name">${esc(d.by)}</span><span class="diet-note">${esc(d.note)}</span></span>${
+            d.uid === uid && !over() ? delBtn("diet", id) : ""
           }</li>`)
           .join("")
-      : `<li class="empty">Nothing here, and that's totally fine! Only add something if you have an allergy or restriction 💚</li>`;
+      : `<li class="empty">${over() ? "No dietary needs were noted." : "Nothing specified yet.<br>Please add something if you have an allergy or restriction."}</li>`);
   }
 
   function renderBuilder() {
     const el = $("builder");
     const checked = new Set([...el.querySelectorAll("input:checked")].map((i) => i.value));
-    el.innerHTML = PIZZA_CATS.map((cat) => {
+    morph(el, PIZZA_CATS.map((cat) => {
       const list = itemsIn(cat);
-      return `<div class="cat cat-${cat}"><h3><span class="emo">${EMOJI[cat]}</span>${CATS[cat]}</h3>${
+      return `<div class="cat cat-${cat}" data-key="${cat}"><h3><span class="emo">${EMOJI[cat]}</span>${CATS[cat]}</h3>${
         list.length
           ? `<div class="chips">${groupItems(list)
               .map((g) => {
-                const icon = g.category === "topping" ? safeIcon(g.icon) : "";
-                return `<label class="chip"><input type="checkbox" value="${esc(g.key)}" ${checked.has(g.key) ? "checked" : ""}><span>${icon ? `<span class="emo">${icon}</span>` : ""}${esc(g.name)}</span></label>`;
+                const icon = iconOf(g);
+                return `<label class="chip" data-key="${esc(g.key)}"><input type="checkbox" value="${esc(g.key)}" ${checked.has(g.key) ? "checked" : ""}><span>${icon ? `<span class="emo">${icon}</span>` : ""}${esc(g.name)}</span></label>`;
               })
               .join("")}</div>`
-          : `<p class="empty">No ${CATS[cat].toLowerCase()} committed yet.</p>`
+          : `<p class="empty">Nobody's bringing ${cat === "sauce" ? "a sauce" : CATS[cat].toLowerCase()} yet. ${over() ? "" : `<button type="button" class="link" data-bring="${cat}">I'll bring ${cat === "sauce" ? "one" : "some"}</button>`}</p>`
       }</div>`;
-    }).join("");
+    }).join(""));
+    updatePreview();
   }
+
+  // The little pie next to "Build a pizza" shows what you've picked so far
+  let baking = false;
+  const pickedItems = () => {
+    const groups = new Map(groupItems(Object.entries(state.items)).map((g) => [g.key, g]));
+    return [...document.querySelectorAll("#builder input:checked")]
+      .map((i) => groups.get(i.value))
+      .filter(Boolean)
+      .map((g) => ({ ...g.entries[0][1], icon: g.icon }));
+  };
+  function updatePreview() {
+    if (!baking) $("preview-pie").innerHTML = pieHTML(pickedItems());
+  }
+  $("builder").addEventListener("change", updatePreview);
 
   // Pick a sauce color and how cheesy the drawing is. Saves as you tap.
   function lookEditor(id, look) {
@@ -473,9 +621,18 @@ function startParty(code) {
     const list = rankPizzas(state.pizzas);
     const byKey = new Map(groupItems(Object.entries(state.items)).map((g) => [g.key, g]));
     const top = list.length ? voteCount(list[0][1]) : 0;
-    $("pizzas").innerHTML = list.length
+    const done = over();
+    // The host's goal: say how many get made, and draw a line under that many in the ranking
+    const goal = pizzaGoal(state.meta);
+    $("pizza-goal").hidden = !goal;
+    $("pizza-goal").textContent = goal
+      ? `${done ? "We were making" : "We're making"} ${goal} pizza${goal === 1 ? "" : "s"}: ${goal === 1 ? "the one" : `the ${goal}`} with the most votes${list.length < goal ? `. ${list.length} idea${list.length === 1 ? "" : "s"} so far` : ""}`
+      : "";
+    const cutLine = `<div class="cut-line" data-key="cut-line"><span>Above the line: the ${goal === 1 ? "pizza" : `${goal} pizzas`} we're making</span></div>`;
+    morph($("pizzas"), list.length
       ? list
-          .map(([id, p]) => {
+          .map(([id, p], i) => {
+            const cut = goal && i === goal - 1 && list.length > goal ? cutLine : "";
             const votes = p.votes || {};
             const count = voteCount(p);
             const mine = !!votes[uid];
@@ -489,10 +646,11 @@ function startParty(code) {
                 });
             const seen = new Set();
             const unique = wanted.filter((w) => { const k = w.g?.key ?? `gone:${w.name}`; return seen.has(k) ? false : seen.add(k); });
-            const ings = unique
+            const order = (w) => { const i = Object.keys(CATS).indexOf(w.g?.category); return i < 0 ? 99 : i; };
+            const ings = [...unique].sort((a, b) => order(a) - order(b))
               .map(({ name, g }) => {
                 if (!g) return `<span class="ing gone" title="Nobody's bringing this right now">${esc(name)}</span>`;
-                const icon = g.category === "topping" ? safeIcon(g.icon) : "";
+                const icon = iconOf(g);
                 const who = g.entries.map(([, it]) => it.by).join(", ");
                 return `<span class="ing" title="from ${esc(who)}">${icon ? `<span class="emo">${icon}</span>` : ""}${esc(g.name)}</span>`;
               })
@@ -504,26 +662,55 @@ function startParty(code) {
                      <input maxlength="60" required value="${esc(draft ?? p.name)}" aria-label="Pizza name">
                      <button>Save</button><button type="button" class="ghost" data-cancel-rename>Cancel</button>
                    </form>`
-                : `<h3>${lead ? '<span class="crown" title="Most votes">👑</span>' : ""}${esc(p.name)}
-                     <button class="ghost" data-rename="${id}" title="Rename">✏️</button>
-                     <button class="ghost" data-style="${id}" title="Change sauce color and cheese">🎨</button>
-                     ${p.uid === uid ? delBtn("pizza", id) : ""}
-                   </h3>`;
-            return `<div class="pizza ${lead ? "leader" : ""}">
-              ${pieHTML(pieItems, p.look)}
+                : `<h3>${esc(p.name)}</h3>${done ? "" : `<div class="pizza-tools">
+                     <button class="ghost icon-btn" data-rename="${id}" aria-label="Rename ${esc(p.name)}" data-tip="Rename"><span>✏️</span></button>
+                     <button class="ghost icon-btn" data-style="${id}" aria-label="Change the sauce color and cheese for ${esc(p.name)}" aria-expanded="${styling === id}" data-tip="Sauce &amp; cheese"><span>🎨</span></button>
+                     ${p.uid === uid ? delBtn("pizza", id) : ""}</div>`}`;
+            const voteBtn = `<button class="vote ${mine ? "on" : ""}" data-vote="${id}" aria-pressed="${mine}" ${done ? "disabled" : ""} aria-label="${done ? `${count} vote${count === 1 ? "" : "s"}` : mine ? "Remove your vote" : "Vote for this one"}">${done ? "" : `<span class="box" aria-hidden="true">${mine ? "✓" : ""}</span>${mine ? "Voted" : "Vote"}`}<b>${count}</b></button>`;
+            return `<div class="pizza ${lead ? "leader" : ""}" data-key="${id}">
+              <div class="plate">${lead ? '<span class="crown" role="img" aria-label="Most votes">👑</span>' : ""}${pieHTML(pieItems, p.look)}</div>
               <div class="body">
-                ${heading}
-                <div class="by">proposed by ${esc(p.by)}</div>
+                <div class="tag-top"><div>${heading}</div>${voteBtn}</div>
+                <div class="by">${byLine(p.by, Object.values(votes))}</div>
                 <div class="ings">${ings || `<span class="ing">just dough, apparently</span>`}</div>
-                ${count ? `<div class="voters">loved by ${Object.values(votes).map(esc).join(", ")}</div>` : ""}
-                ${styling === id ? lookEditor(id, p.look || {}) : ""}
+                ${styling === id && !done ? lookEditor(id, p.look || {}) : ""}
               </div>
-              <button class="vote ${mine ? "on" : ""}" data-vote="${id}" aria-pressed="${mine}" title="${mine ? "Remove your vote" : "Vote for this one"}"><span class="heart">${mine ? "♥" : "♡"}</span><b>${count}</b></button>
-            </div>`;
+            </div>${cut}`;
           })
           .join("")
-      : `<p class="empty">No pizzas yet. Dream one up above! 💭</p>`;
+      : `<p class="empty">${done ? "No pizzas were proposed." : "No pizzas yet. Build one above."}</p>`);
     if (hadFocus) document.querySelector("#pizzas .rename input")?.focus();
+    renderTally(list, goal, done);
+  }
+
+  // The tally at the bottom: every pizza's votes as a bar, who voted, and where the host's goal cuts the list
+  function renderTally(list, goal, done) {
+    $("tally-section").hidden = !list.length;
+    if (!list.length) return morph($("tally"), "");
+    const max = Math.max(1, ...list.map(([, p]) => voteCount(p)));
+    const making = goal ? Math.min(goal, list.length) : list.length;
+    const tie = goal && list.length > goal && voteCount(list[goal - 1][1]) === voteCount(list[goal][1]) && voteCount(list[goal][1]) > 0;
+    $("tally-lede").textContent = !goal
+      ? `${done ? "Final votes" : "Votes so far"}. The host hasn't set how many pizzas to make.`
+      : list.length <= goal
+        ? `${done ? "All" : "So far, all"} ${list.length} pizza${list.length === 1 ? "" : "s"} make the cut (the goal is ${goal}).`
+        : `${done ? "The" : "Right now, the"} top ${goal} get made and ${list.length - goal} ${list.length - goal === 1 ? "is" : "are"} cut.${tie ? " There's a tie for the last spot." : ""}`;
+    morph($("tally"), list
+      .map(([id, p], i) => {
+        const count = voteCount(p);
+        const cut = goal && i >= goal;
+        const voters = Object.values(p.votes || {});
+        const row = `<li class="tally-row ${cut ? "cut" : "made"}" data-key="${id}">
+          <div class="tally-top"><span class="tally-name">${esc(p.name)}</span><span class="tally-n">${count} vote${count === 1 ? "" : "s"}</span></div>
+          <div class="tally-bar" aria-hidden="true"><span style="width:${(count / max) * 100}%"></span></div>
+          <div class="tally-who">${voters.length ? esc(voters.join(", ")) : "No votes yet"}</div>
+        </li>`;
+        const line = goal && i === making - 1 && list.length > goal
+          ? `<li class="tally-cut" data-key="tally-cut" aria-hidden="true"><span>✂ cut</span></li>`
+          : "";
+        return row + line;
+      })
+      .join(""));
   }
 
   // ── Actions ──
@@ -534,11 +721,11 @@ function startParty(code) {
     if (!by || !name) return;
     const category = $("item-cat").value;
     const amount = $("item-amount").value.trim();
-    const icon = category === "topping" ? safeIcon($("item-icon").value) : "";
+    const icon = safeIcon($("item-icon").value);
     await store.add("items", { name, category, by, uid, createdAt: Date.now(), ...(amount && { amount }), ...(icon && { icon }) });
     $("item-name").value = "";
     $("item-amount").value = "";
-    $("item-icon").value = "";
+    setPick($("item-icon"), "");
     toast(`Yay, thanks ${by}! ${name} added 💛`);
   });
 
@@ -562,10 +749,19 @@ function startParty(code) {
       .map((i) => groups.get(i.value)?.name.slice(0, 60))
       .filter(Boolean);
     if (!picks.length) return toast("Pick at least one ingredient");
+    const baked = pickedItems();
     await store.add("pizzas", { name, by, uid, picks, createdAt: Date.now(), votes: { [uid]: by } });
     $("pizza-name").value = "";
     document.querySelectorAll("#builder input:checked").forEach((i) => (i.checked = false));
     toast(`${name} is in the oven 🍕🔥`);
+    // Bake it: the sauce spreads, the cheese melts, the toppings drop on. Then the preview resets.
+    const preview = $("preview-pie");
+    baking = true;
+    preview.innerHTML = pieHTML(baked);
+    preview.classList.remove("baking");
+    void preview.offsetWidth; // restart the animation
+    preview.classList.add("baking");
+    setTimeout(() => { baking = false; preview.classList.remove("baking"); updatePreview(); }, 2200);
   });
 
   // Party name + details: the creator edits them right in the header
@@ -575,18 +771,28 @@ function startParty(code) {
     if (on) {
       $("meta-title").value = state.meta.title || "";
       $("meta-details").value = state.meta.details || "";
+      $("meta-date").value = state.meta.date || "";
+      $("meta-goal").value = pizzaGoal(state.meta) || "";
       $("meta-title").focus();
     }
   }
   $("edit-meta").addEventListener("click", () => showMetaForm(true));
+  $("reopen").addEventListener("click", () => { showMetaForm(true); $("meta-date").focus(); });
   $("meta-cancel").addEventListener("click", () => showMetaForm(false));
   $("meta-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const title = $("meta-title").value.trim().slice(0, 60);
     if (!title || state.meta.uid !== uid) return;
-    await store.set("meta", { ...state.meta, title, details: $("meta-details").value.trim().slice(0, 200) });
+    const date = $("meta-date").value;
+    if (date && !partyEndsAt(date)) return toast("That date doesn't look right");
+    const goalText = $("meta-goal").value.trim();
+    const goal = pizzaGoal({ pizzaGoal: Number(goalText) });
+    if (goalText && !goal) return toast("Pick a number of pizzas from 1 to 50");
+    const wasOver = over();
+    const { date: _d, endsAt: _e, pizzaGoal: _g, ...rest } = state.meta;
+    await store.set("meta", { ...rest, title, details: $("meta-details").value.trim().slice(0, 200), ...dateFields(date), ...(goal && { pizzaGoal: goal }) });
     showMetaForm(false);
-    toast("Party updated ✨");
+    toast(wasOver && !isOver({ endsAt: partyEndsAt(date) }) ? "The party's back on! 🎉" : "Party updated ✨");
   });
 
   document.addEventListener("submit", async (e) => {
@@ -600,7 +806,7 @@ function startParty(code) {
     const category = get("category");
     if (!it || it.uid !== uid || !name || !CATS[category]) return;
     const amount = get("amount").slice(0, 30);
-    const icon = category === "topping" ? safeIcon(get("icon")) : "";
+    const icon = safeIcon(get("icon"));
     editingItem = null;
     await store.set(`items/${id}`, { name, category, by: it.by, uid: it.uid, createdAt: it.createdAt || Date.now(), ...(amount && { amount }), ...(icon && { icon }) });
     toast(`${name} updated ✨`);
@@ -611,13 +817,6 @@ function startParty(code) {
     const { look, pizza } = e.target.dataset || {};
     if (!look || !state.pizzas[pizza]) return;
     await store.set(`pizzas/${pizza}/look/${look}`, e.target.value === "auto" ? null : e.target.value);
-  });
-
-  // Show the icon picker only while "Topping" is chosen in an open editor
-  document.addEventListener("change", (e) => {
-    if (e.target.dataset?.f !== "category") return;
-    const icon = e.target.form?.querySelector('[data-f="icon"]');
-    if (icon) icon.hidden = e.target.value !== "topping";
   });
 
   document.addEventListener("submit", async (e) => {
@@ -656,7 +855,7 @@ function startParty(code) {
       const src = state.items[b.dataset.meToo];
       const by = myName();
       if (!src || !by) return;
-      const icon = src.category === "topping" ? safeIcon(src.icon) : "";
+      const icon = safeIcon(src.icon);
       const ref = await store.add("items", { name: src.name.trim().slice(0, 60), category: src.category, by, uid, createdAt: Date.now(), ...(icon && { icon }) });
       toast(`You're bringing ${src.name.trim()} too! Add how much if you like ✨`);
       if (ref?.key) {
@@ -664,6 +863,10 @@ function startParty(code) {
         renderItems();
         document.querySelector('#items [data-edit-form] [data-f="amount"]')?.focus();
       }
+    } else if (b.dataset.bring) {
+      $("item-cat").value = b.dataset.bring;
+      $("item-name").focus();
+      $("item-name").scrollIntoView({ behavior: "smooth", block: "center" });
     } else if (b.dataset.editItem) {
       editingItem = b.dataset.editItem;
       renderItems();
@@ -707,7 +910,7 @@ function startParty(code) {
   let loading = false;
   db.watch(`${ROOT}/meta`, (meta) => {
     if (!meta.title) {
-      localStorage.removeItem("lastParty");
+      localStorage.removeItem(LAST);
       sessionStorage.notice = "That party doesn't exist anymore 🤷 Check the link, or host a new one.";
       location.hash = "";
       return;
@@ -729,6 +932,20 @@ function startParty(code) {
       if (!joined) { joined = true; joinParty(); }
     }, blocked);
   }, blocked);
+}
+
+// { date, endsAt } for a picked date, or nothing (an open-ended party).
+// "Proposed by Sam", "Proposed and voted by Sam", "Proposed by Sam, voted by Alex and Jo"
+function byLine(by, lovers) {
+  const and = (names) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
+  if (!lovers.length) return `Proposed by ${esc(by)}`;
+  if (lovers.length === 1 && lovers[0] === by) return `Proposed and voted by ${esc(by)}`;
+  return `Proposed by ${esc(by)}, voted by ${esc(and(lovers))}`;
+}
+
+function dateFields(date) {
+  const endsAt = partyEndsAt(date);
+  return endsAt ? { date, endsAt } : {};
 }
 
 function toast(msg) {
