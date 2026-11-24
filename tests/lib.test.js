@@ -107,7 +107,7 @@ test("ingredientKey treats small spelling differences as the same ingredient", a
 test("groupItems merges duplicates and keeps everyone who's bringing it", async () => {
   const { groupItems } = await import("../lib.js");
   const groups = groupItems([
-    ["a", { name: "Pepperoni", category: "topping", by: "Sam" }],
+    ["a", { name: "Pepperoni", category: "topping", by: "Matt" }],
     ["b", { name: "Basil", category: "topping", by: "Alex" }],
     ["c", { name: "pepperoni ", category: "topping", by: "Alex", icon: "🌶️" }],
   ]);
@@ -151,20 +151,20 @@ test("the deploy publishes every file the page loads", () => {
 test("totalAmount adds up amounts that share a unit and names the vague ones", async () => {
   const { totalAmount } = await import("../lib.js");
   const e = (by, amount) => [by, { by, amount }];
-  assert.equal(totalAmount([e("Sam", "2 cups"), e("Alex", "1 cup")]), "3 cups");
-  assert.equal(totalAmount([e("Sam", "2 cups"), e("Alex", "1 Cups"), e("Nicole", "lots"), e("Damian", "some")]), "3 cups + lots (Nicole) + some (Damian)");
-  assert.equal(totalAmount([e("Sam", "1/2 lb"), e("Alex", "1.5 lbs"), e("Jo", "2 bags")]), "2 lbs + 2 bags");
-  assert.equal(totalAmount([e("Sam", "2"), e("Alex", "3"), e("Jo", "")]), "5");
-  assert.equal(totalAmount([e("Sam", "1 box"), e("Alex", "2 boxes")]), "3 boxes");
-  assert.equal(totalAmount([e("Sam", "1 bag"), e("Alex", "2 bag")]), "3 bags");
+  assert.equal(totalAmount([e("Matt", "2 cups"), e("Alex", "1 cup")]), "3 cups");
+  assert.equal(totalAmount([e("Matt", "2 cups"), e("Alex", "1 Cups"), e("Nicole", "lots"), e("Damian", "some")]), "3 cups + lots (Nicole) + some (Damian)");
+  assert.equal(totalAmount([e("Matt", "1/2 lb"), e("Alex", "1.5 lbs"), e("Jo", "2 bags")]), "2 lbs + 2 bags");
+  assert.equal(totalAmount([e("Matt", "2"), e("Alex", "3"), e("Jo", "")]), "5");
+  assert.equal(totalAmount([e("Matt", "1 box"), e("Alex", "2 boxes")]), "3 boxes");
+  assert.equal(totalAmount([e("Matt", "1 bag"), e("Alex", "2 bag")]), "3 bags");
 });
 
 test("totalAmount stays quiet when there's nothing to add up", async () => {
   const { totalAmount } = await import("../lib.js");
   const e = (by, amount) => [by, { by, amount }];
-  assert.equal(totalAmount([e("Sam", "2 cups"), e("Alex", "")]), "");
+  assert.equal(totalAmount([e("Matt", "2 cups"), e("Alex", "")]), "");
   assert.equal(totalAmount([e("Nicole", "lots"), e("Damian", "some")]), "");
-  assert.equal(totalAmount([e("Sam", "2 cups"), e("Alex", "1 lb")]), "");
+  assert.equal(totalAmount([e("Matt", "2 cups"), e("Alex", "1 lb")]), "");
 });
 
 test("partyEndsAt: a party wraps up at midnight after its day", async () => {

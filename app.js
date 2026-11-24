@@ -938,7 +938,7 @@ function startParty(code) {
 }
 
 // { date, endsAt } for a picked date, or nothing (an open-ended party).
-// "Proposed by Sam", "Proposed and voted by Sam", "Proposed by Sam, voted by Alex and Jo"
+// "Proposed by Matt", "Proposed and voted by Matt", "Proposed by Matt, voted by Alex and Jo"
 function byLine(by, lovers) {
   const and = (names) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
   if (!lovers.length) return `Proposed by ${esc(by)}`;

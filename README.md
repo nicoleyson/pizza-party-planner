@@ -59,7 +59,7 @@ You need a Google account (for Firebase) and a GitHub account.
 2. **Realtime Database** → **Create database** → any location → **Start in locked mode**.
 3. **Rules** tab: paste in [`database.rules.json`](database.rules.json), then click **Publish**.
 4. **Authentication** → **Sign-in method** → enable **Google**. Leave every other provider off.
-5. **Add yourself as a host.** In the database's **Data** tab, add a `hosts` key at the top level. Under it, add one entry per host: their Google email in lowercase with every `.` changed to `,`, set to `true` (boolean, no quotes). For example, `sam.lee@gmail.com` becomes `sam,lee@gmail,com: true`. Add more hosts the same way at any time. Nobody can add themselves from the website.
+5. **Add yourself as a host.** In the database's **Data** tab, add a `hosts` key at the top level. Under it, add one entry per host: their Google email in lowercase with every `.` changed to `,`, set to `true` (boolean, no quotes). For example, `matt.lee@gmail.com` becomes `matt,lee@gmail,com: true`. Add more hosts the same way at any time. Nobody can add themselves from the website.
 6. **Project settings → Your apps** → add a **Web app**. Copy its config values; you'll need them below.
 
 ### 2. Run it on your computer
