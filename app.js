@@ -1,48 +1,10 @@
 import { firebaseConfig } from "./config.js";
+import { pieHTML } from "./pie.js";
 
 const CATS = { sauce: "Sauces", cheese: "Cheeses", topping: "Toppings", other: "Dough / drinks / other" };
 const EMOJI = { sauce: "🍅", cheese: "🧀", topping: "🍄", other: "🥖" };
 const PIZZA_CATS = ["sauce", "cheese", "topping"];
 
-// ── Mini pizza drawing: guess colors from ingredient names ──
-const TOPPING_COLORS = [
-  [/pepperoni|salami|chorizo|soppressata/i, "#c0392b"],
-  [/sausage|meatball|beef|bacon/i, "#8a4b2e"],
-  [/ham|prosciutto|turkey|chicken/i, "#f0a99a"],
-  [/mushroom|funghi/i, "#c9a77c"],
-  [/olive/i, "#3a2f2b"],
-  [/basil|spinach|arugula|rocket|kale|herb/i, "#3f8a3a"],
-  [/pepper|jalape|chil/i, "#5cb85c"],
-  [/onion|shallot/i, "#c77dab"],
-  [/pineapple|corn/i, "#f5c542"],
-  [/tomato/i, "#e74c3c"],
-  [/honey/i, "#f0a830"],
-  [/egg/i, "#fff8dc"],
-];
-const FALLBACK = ["#e67e22", "#9b59b6", "#16a085", "#d35400", "#2c3e50", "#c0392b"];
-const SPOTS = [[30, 30], [62, 26], [72, 55], [50, 72], [26, 60], [48, 46], [40, 22], [74, 38], [36, 78], [62, 82]];
-function toppingColor(name) {
-  const hit = TOPPING_COLORS.find(([re]) => re.test(name));
-  if (hit) return hit[1];
-  let h = 0;
-  for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return FALLBACK[h % FALLBACK.length];
-}
-function sauceColor(name) {
-  if (/pesto|basil|green/i.test(name)) return "#7da443";
-  if (/white|alfredo|garlic|cream|ricotta|bechamel|ranch/i.test(name)) return "#f6ecd6";
-  if (/bbq|barbecue/i.test(name)) return "#7b3420";
-  return "#d9472b";
-}
-function pieHTML(items) {
-  const sauce = items.find((i) => i.category === "sauce");
-  const cheese = items.some((i) => i.category === "cheese");
-  const tops = items.filter((i) => i.category === "topping");
-  const dots = tops.length
-    ? SPOTS.map(([x, y], k) => `<i class="top" style="left:${x}%;top:${y}%;background:${toppingColor(tops[k % tops.length].name)}"></i>`).join("")
-    : "";
-  return `<div class="pie" aria-hidden="true" style="--sauce:${sauce ? sauceColor(sauce.name) : "#f3d9a4"}">${cheese ? '<i class="cheese"></i>' : ""}${dots}</div>`;
-}
 const $ = (id) => document.getElementById(id);
 
 // ── Who am I (no accounts: a random id + name saved in this browser) ──
