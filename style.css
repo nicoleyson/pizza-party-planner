@@ -387,3 +387,27 @@ ul.list li.editing:hover { transform: none; }
   .item-edit [data-f="amount"] { grid-area: amt; }
   .item-edit .edit-actions { grid-area: act; }
 }
+
+/* 🛒 Your grocery run: a pill next to the heading that opens a tiny checklist */
+button.list-btn {
+  margin-left: auto; font-family: "Nunito", sans-serif; font-size: .85rem; font-weight: 800;
+  padding: 4px 12px; border-radius: 999px; background: var(--cheese-soft); color: var(--ink);
+  border: 2px solid var(--ink); box-shadow: 0 3px 0 var(--ink);
+}
+button.list-btn b { display: inline-block; min-width: 1.4em; margin-left: 2px; padding: 0 5px; border-radius: 999px; background: var(--tomato); color: #fff; font-size: .75rem; text-align: center; }
+button.list-btn[aria-expanded="true"] { background: var(--cheese); }
+button.list-btn .emo, #grocery-copy .emo { margin-right: 5px; }
+.grocery {
+  margin: 0 0 var(--s3); padding: var(--s2) var(--s3); background: var(--cheese-soft);
+  border: 2px dashed var(--ink); border-radius: 18px;
+}
+.grocery-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
+.grocery-head b { font-family: var(--display); font-weight: 400; font-size: 1.05rem; }
+.grocery-head button.ghost:hover { transform: none; }
+.grocery ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; }
+.grocery label { display: flex; align-items: center; gap: 8px; padding: 3px 0; cursor: pointer; font-weight: 700; }
+.grocery input { width: 18px; height: 18px; margin: 0; accent-color: var(--basil); flex: none; }
+.grocery .emo { width: 1.3em; text-align: center; flex: none; }
+.grocery .amt { margin-left: 0; }
+.grocery label.got .g-name { text-decoration: line-through; color: var(--muted); }
+.grocery label.got .emo, .grocery label.got .amt { opacity: .5; }

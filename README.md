@@ -9,6 +9,7 @@ A tiny, free website for pizza-making parties. Send friends one link, and everyo
 **For guests**
 - **Who's coming:** everyone who opens the party shows up at the top with their name and Google photo. The host gets a little "host" tag.
 - **What are you bringing?** Add ingredients as a sauce, cheese, topping or other (dough, drinks…), with an optional amount and pizza icon. Fix the category or details later with ✏️, and remove them with ✕. If two people bring the same thing, it merges into one row, and anyone can tap **+ me too**.
+- **🛒 My list:** a little button that opens your grocery run: just the things *you* signed up for, with amounts. Tick them off as you shop (ticks are saved only in your browser), or copy the list into your notes.
 - **Dietary needs (optional):** a short list for allergies or restrictions, so nobody gets surprised.
 - **Propose a pizza:** pick from the ingredients people are actually bringing, name it, and see it drawn live. 🎨 changes the sauce color and how much cheese there is. Anyone can rename a pizza.
 - **Vote:** tap ♥ on your favorites, one vote per person per pizza. The leader gets a 👑.

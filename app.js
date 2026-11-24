@@ -259,6 +259,10 @@ function startParty(code) {
   let armTimer;
   let editingItem = null; // ingredient id being edited inline
   let styling = null; // pizza id whose look (sauce color / cheese) is being changed
+  // Your grocery run: what you've ticked off is only remembered in this browser
+  const GOT_KEY = `got:${code}`;
+  let got = new Set(JSON.parse(localStorage[GOT_KEY] || "[]"));
+  const saveGot = () => (localStorage[GOT_KEY] = JSON.stringify([...got]));
 
   const itemsIn = (cat) =>
     Object.entries(state.items)
@@ -309,6 +313,7 @@ function startParty(code) {
   }
 
   function renderItems() {
+    renderGrocery();
     // Hold on to an open editor's unsaved values and focus across live updates
     const form = document.querySelector("#items [data-edit-form]");
     const field = (f) => form?.querySelector(`[data-f="${f}"]`)?.value;
@@ -348,6 +353,52 @@ function startParty(code) {
   }
 
   // "Who's coming": everyone who has joined, with their Google photo
+
+  // 🛒 A short checklist of just the things you said you'd bring
+  function myItems() {
+    const order = Object.keys(CATS);
+    return Object.entries(state.items)
+      .filter(([, it]) => it.uid === uid)
+      .sort((a, b) => order.indexOf(a[1].category) - order.indexOf(b[1].category) || a[1].name.localeCompare(b[1].name));
+  }
+  function renderGrocery() {
+    const mine = myItems();
+    const btn = $("list-btn");
+    const panel = $("grocery");
+    const left = mine.filter(([id]) => !got.has(id)).length;
+    btn.hidden = !mine.length;
+    if (!mine.length) { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); return; }
+    btn.innerHTML = left ? `<span class="emo">🛒</span>My list <b>${left}</b>` : `<span class="emo">🛒</span>All set ✓`;
+    if (panel.hidden) return;
+    panel.innerHTML = `<div class="grocery-head"><b>Your grocery run</b><button type="button" class="ghost" id="grocery-copy"><span class="emo">📋</span>Copy</button></div>
+      <ul>${mine
+        .map(([id, it]) => {
+          const icon = iconOf(it) || EMOJI[it.category];
+          return `<li><label class="${got.has(id) ? "got" : ""}"><input type="checkbox" data-got="${id}" ${got.has(id) ? "checked" : ""}><span class="emo">${icon}</span><span class="g-name">${esc(it.name)}</span>${it.amount ? `<span class="amt">${esc(it.amount)}</span>` : ""}</label></li>`;
+        })
+        .join("")}</ul>`;
+  }
+  $("list-btn").addEventListener("click", () => {
+    const panel = $("grocery");
+    panel.hidden = !panel.hidden;
+    $("list-btn").setAttribute("aria-expanded", String(!panel.hidden));
+    renderGrocery();
+  });
+  $("grocery").addEventListener("change", (e) => {
+    const id = e.target.dataset?.got;
+    if (!id) return;
+    e.target.checked ? got.add(id) : got.delete(id);
+    got = new Set([...got].filter((g) => state.items[g])); // forget things you're no longer bringing
+    saveGot();
+    renderGrocery();
+  });
+  $("grocery").addEventListener("click", async (e) => {
+    if (e.target.id !== "grocery-copy") return;
+    const lines = myItems().map(([id, it]) => `${got.has(id) ? "✓" : "☐"} ${it.name.trim()}${it.amount ? ` (${it.amount.trim()})` : ""}`);
+    const text = `🛒 ${state.meta.title || "Pizza party"}\n${lines.join("\n")}`;
+    try { await navigator.clipboard.writeText(text); toast("List copied! 📋"); }
+    catch { toast("Couldn't copy, sorry 😕"); }
+  });
   function renderPeople() {
     const list = Object.entries(state.people).sort((a, b) => (a[1].joinedAt || 0) - (b[1].joinedAt || 0));
     $("people").hidden = !list.length;
