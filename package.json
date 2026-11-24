@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "test:rules": "PATH=\"/opt/homebrew/opt/openjdk/bin:$PATH\" npx --yes firebase-tools@13 emulators:exec --only database --project demo-pizza-party \"node --test tests/rules.emulator.test.js\""
   }
 }

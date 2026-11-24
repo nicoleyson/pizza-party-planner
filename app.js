@@ -184,9 +184,12 @@ function startParty(code) {
     toast("This party's over, so it can't change anymore 🍕");
     return true;
   };
+  // A refused write rejects, so the code after it (like a "thanks, added!" message) doesn't run.
+  const refused = () => Promise.reject(Object.assign(new Error("This party is over"), { locked: true }));
+  addEventListener("unhandledrejection", (e) => e.reason?.locked && e.preventDefault());
   const store = {
-    add: (p, obj) => (locked(p) ? Promise.resolve(null) : saved(db.add(`${ROOT}/${p}`, obj))),
-    set: (p, val) => (locked(p) ? Promise.resolve(null) : saved(db.set(`${ROOT}/${p}`, val))),
+    add: (p, obj) => (locked(p) ? refused() : saved(db.add(`${ROOT}/${p}`, obj))),
+    set: (p, val) => (locked(p) ? refused() : saved(db.set(`${ROOT}/${p}`, val))),
   };
   $("party").hidden = false;
 

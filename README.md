@@ -64,6 +64,14 @@ To run the tests (Node 20 or newer, no installs needed):
 npm test
 ```
 
+To test the database rules exactly as Firebase applies them, run them against the Firebase emulator, an offline copy of the database on your computer that never touches the live one. It needs Java (`brew install openjdk`) and downloads Google's `firebase-tools` the first time:
+
+```bash
+npm run test:rules
+```
+
+It checks that parties made before party dates work as before, that a party locks after its date and the host can reopen it, that nobody can change someone else's things, and that invite-only parties stay private. Run it after any change to `database.rules.json`, before publishing the rules.
+
 ### 3. Publish on GitHub Pages
 
 1. Push this folder to a GitHub repo.
@@ -134,5 +142,6 @@ Worth checking in Firebase and Google Cloud:
 | `morph.js` | Updates lists in place when friends change things, so the page doesn't jump or lose what you're typing |
 | `config.example.js` | Template for your `config.js` (Firebase settings) |
 | `database.rules.json` | Firebase security rules: paste these into the Rules tab |
-| `tests/` | `npm test`: helpers, drawings, and checks that the rules stay strict |
+| `tests/` | `npm test`: helpers, drawings, and checks that the rules stay strict. `npm run test:rules`: the rules against the Firebase emulator |
+| `firebase.json` | Only tells the emulator where the rules are (`npm run test:rules`) |
 | `.github/workflows/pages.yml` | Tests, builds `config.js` from secrets, and deploys |
