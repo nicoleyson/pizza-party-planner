@@ -262,6 +262,8 @@ ul.list li:hover { border-color: var(--dot); transform: translateX(3px); }
 .diets li.empty { display: block; background: none; border: 2.5px dashed var(--line); text-align: center; }
 .diets li.empty:hover { transform: none; }
 .diet-note { margin-left: var(--s2); }
+.diet-note.any { color: var(--muted); font-weight: 700; }
+.diet-form #diet-note { flex: 1; min-width: 0; }
 .foot { text-align: center; color: var(--muted); font-weight: 800; font-size: .85rem; padding: 8px 0 40px; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -287,4 +289,5 @@ ul.list li:hover { border-color: var(--dot); transform: translateX(3px); }
   .pizza .ings { grid-area: ings; margin-top: var(--s2); }
   .pizza .voters { grid-area: voters; }
   .pizza .vote { grid-area: vote; min-width: 48px; padding: 6px 8px; }
+  .diet-form #diet-note { flex-basis: 100%; }
 }

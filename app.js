@@ -5,6 +5,7 @@ import { parseCode, newCode, esc, cleanIds, voteCount, rankPizzas } from "./lib.
 const CATS = { sauce: "Sauces", cheese: "Cheeses", topping: "Toppings", other: "Dough / drinks / other" };
 const EMOJI = { sauce: "🍅", cheese: "🧀", topping: "🍄", other: "🥖" };
 const PIZZA_CATS = ["sauce", "cheese", "topping"];
+const EATS_ALL = "eats everything 🍕";
 
 const $ = (id) => document.getElementById(id);
 
@@ -94,9 +95,16 @@ function showGate() {
 function startParty(code) {
   localStorage.lastParty = code;
   const ROOT = `parties/${code}`;
+  // Saves that fail (offline, or blocked by the database rules) show a message instead of vanishing.
+  const saved = (promise) =>
+    Promise.resolve(promise).catch((err) => {
+      console.error(err);
+      toast("Hmm, that didn't save 😕 Check your connection and try again.");
+      throw err;
+    });
   const store = {
-    add: (p, obj) => db.add(`${ROOT}/${p}`, obj),
-    set: (p, val) => db.set(`${ROOT}/${p}`, val),
+    add: (p, obj) => saved(db.add(`${ROOT}/${p}`, obj)),
+    set: (p, val) => saved(db.set(`${ROOT}/${p}`, val)),
   };
   $("party").hidden = false;
 
@@ -183,7 +191,7 @@ function startParty(code) {
     const list = Object.entries(state.diets).sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0));
     $("diets").innerHTML = list.length
       ? list
-          .map(([id, d]) => `<li><span><span class="item-name">${esc(d.by)}</span><span class="diet-note">${esc(d.note)}</span></span>${
+          .map(([id, d]) => `<li><span><span class="item-name">${esc(d.by)}</span><span class="diet-note${d.note === EATS_ALL ? " any" : ""}">${esc(d.note)}</span></span>${
             d.uid === uid ? delBtn("diet", id) : ""
           }</li>`)
           .join("")
@@ -282,6 +290,13 @@ function startParty(code) {
     await store.add("diets", { note, by, uid, createdAt: Date.now() });
     $("diet-note").value = "";
     toast("Noted! We'll keep it in mind 💚");
+  });
+  $("diet-any").addEventListener("click", async () => {
+    const by = myName();
+    if (!by) return;
+    if (Object.values(state.diets).some((d) => d.uid === uid && d.note === EATS_ALL)) return toast("Already noted, you're easy to feed 😄");
+    await store.add("diets", { note: EATS_ALL, by, uid, createdAt: Date.now() });
+    toast("Easy to feed, love it 🍕");
   });
 
   $("pizza-form").addEventListener("submit", async (e) => {
