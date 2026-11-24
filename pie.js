@@ -48,6 +48,16 @@ const SAUCES = [
 const TOMATO = "#d9472b";
 const NO_SAUCE = "#f3d9a4";
 
+// Hand-picked looks people can choose after a pizza is made ("auto" = guess from ingredients).
+// Keep the keys in sync with database.rules.json.
+export const SAUCE_LOOKS = [
+  ["auto", "Match ingredients", null], ["tomato", "Tomato", TOMATO], ["vodka", "Vodka / pink", "#e8735a"],
+  ["white", "White", "#f6ecd6"], ["pesto", "Pesto", "#7da443"], ["bbq", "BBQ", "#7b3420"],
+  ["berry", "Berry", "#9b1b30"], ["none", "No sauce", NO_SAUCE],
+];
+export const CHEESE_LOOKS = [["auto", "Match ingredients"], ["none", "No cheese"], ["some", "Cheesy"], ["lots", "Extra cheesy"]];
+const SAUCE_BY_KEY = Object.fromEntries(SAUCE_LOOKS.map(([k, , c]) => [k, c]));
+
 // Unknown toppings get a stable color derived from the name,
 // so "gummy bears" looks the same on everyone's screen.
 const FALLBACK = ["#e67e22", "#9b59b6", "#16a085", "#d35400", "#2c3e50", "#1abc9c", "#e84393"];
@@ -103,9 +113,10 @@ function spots(n) {
   });
 }
 
-export function pieHTML(items) {
+export function pieHTML(items, look = {}) {
   const sauces = items.filter((i) => i.category === "sauce");
-  const cheese = items.some((i) => i.category === "cheese");
+  const cheeseLook = CHEESE_LOOKS.some(([k]) => k === look?.cheese) ? look.cheese : "auto";
+  const cheese = cheeseLook === "auto" ? items.some((i) => i.category === "cheese") : cheeseLook !== "none";
   const tops = items.filter((i) => i.category === "topping");
   // At least 10 dots so it looks loaded; up to 16 so every topping shows.
   const n = tops.length ? Math.min(Math.max(10, tops.length), 16) : 0;
@@ -120,7 +131,9 @@ export function pieHTML(items) {
     })
     .join("");
   // Two sauces? Split the pie half and half.
-  const [s1, s2] = sauces.map((s) => sauceColor(s.name));
+  let [s1, s2] = sauces.map((s) => sauceColor(s.name));
+  const picked = SAUCE_BY_KEY[look?.sauce];
+  if (picked) s1 = s2 = picked; // a chosen sauce color covers the whole pie
   const base = s1 ? `--sauce:${s1};--sauce2:${s2 || s1}` : `--sauce:${NO_SAUCE};--sauce2:${NO_SAUCE}`;
-  return `<div class="pie" aria-hidden="true" style="${base}">${cheese ? '<i class="cheese"></i>' : ""}${dots}</div>`;
+  return `<div class="pie" aria-hidden="true" style="${base}">${cheese ? `<i class="cheese${cheeseLook === "lots" ? " lots" : ""}"></i>` : ""}${dots}</div>`;
 }

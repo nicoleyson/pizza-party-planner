@@ -80,6 +80,17 @@
                 ".validate": "$voter.matches(/^[-A-Za-z0-9]{1,40}$/) && newData.isString() && newData.val().length <= 40"
               }
             },
+            "look": {
+              "sauce": {
+                ".validate": "newData.isString() && newData.val().matches(/^(tomato|vodka|white|pesto|bbq|berry|none)$/)"
+              },
+              "cheese": {
+                ".validate": "newData.isString() && newData.val().matches(/^(none|some|lots)$/)"
+              },
+              "$other": {
+                ".validate": false
+              }
+            },
             "$other": {
               ".validate": false
             }

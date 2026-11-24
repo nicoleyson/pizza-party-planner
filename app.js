@@ -1,9 +1,9 @@
 import { firebaseConfig } from "./config.js";
-import { pieHTML, ICONS, safeIcon } from "./pie.js";
+import { pieHTML, ICONS, safeIcon, SAUCE_LOOKS, CHEESE_LOOKS } from "./pie.js";
 import { parseCode, newCode, esc, cleanIds, voteCount, rankPizzas } from "./lib.js";
 
 const CATS = { sauce: "Sauces", cheese: "Cheeses", topping: "Toppings", other: "Dough / drinks / other" };
-const EMOJI = { sauce: "🍅", cheese: "🧀", topping: "🍄", other: "🥖" };
+const EMOJI = { sauce: "🍅", cheese: "🧀", topping: "✨", other: "🥖" };
 const PIZZA_CATS = ["sauce", "cheese", "topping"];
 const CAT_ONE = { sauce: "Sauce", cheese: "Cheese", topping: "Topping", other: "Other" };
 
@@ -138,6 +138,7 @@ function startParty(code) {
   let armed = null; // "item:<id>", "pizza:<id>" or "diet:<id>" waiting for a second tap to delete
   let armTimer;
   let editingItem = null; // ingredient id being edited inline
+  let styling = null; // pizza id whose look (sauce color / cheese) is being changed
 
   const itemsIn = (cat) =>
     Object.entries(state.items)
@@ -239,6 +240,23 @@ function startParty(code) {
     }).join("");
   }
 
+  // Pick a sauce color and how cheesy the drawing is. Saves as you tap.
+  function lookEditor(id, look) {
+    const group = (kind, options, current) =>
+      options
+        .map(([key, label, color]) => {
+          const on = (current || "auto") === key;
+          const dot = kind === "sauce" ? (color ? `<i class="dot" style="background:${color}"></i>` : `<i class="dot auto">✨</i>`) : "";
+          return `<label class="swatch"><input type="radio" name="${kind}-${id}" value="${key}" data-look="${kind}" data-pizza="${id}" ${on ? "checked" : ""}><span>${dot}${label}</span></label>`;
+        })
+        .join("");
+    return `<div class="look-editor">
+      <div class="look-row"><b>Sauce</b><div class="swatches">${group("sauce", SAUCE_LOOKS, look.sauce)}</div></div>
+      <div class="look-row"><b>Cheese</b><div class="swatches">${group("cheese", CHEESE_LOOKS, look.cheese)}</div></div>
+      <button type="button" class="secondary" data-style-done>Done</button>
+    </div>`;
+  }
+
   function renderPizzas() {
     // Keep whatever someone is typing in a rename box across live updates
     const draftEl = document.querySelector("#pizzas .rename input");
@@ -271,15 +289,17 @@ function startParty(code) {
                    </form>`
                 : `<h3>${lead ? '<span class="crown" title="Most votes">👑</span>' : ""}${esc(p.name)}
                      <button class="ghost" data-rename="${id}" title="Rename">✏️</button>
+                     <button class="ghost" data-style="${id}" title="Change sauce color and cheese">🎨</button>
                      ${p.uid === uid ? delBtn("pizza", id) : ""}
                    </h3>`;
             return `<div class="pizza ${lead ? "leader" : ""}">
-              ${pieHTML(pieItems)}
+              ${pieHTML(pieItems, p.look)}
               <div class="body">
                 ${heading}
                 <div class="by">proposed by ${esc(p.by)}</div>
                 <div class="ings">${ings || `<span class="ing">just dough, apparently</span>`}</div>
                 ${count ? `<div class="voters">loved by ${Object.values(votes).map(esc).join(", ")}</div>` : ""}
+                ${styling === id ? lookEditor(id, p.look || {}) : ""}
               </div>
               <button class="vote ${mine ? "on" : ""}" data-vote="${id}" aria-pressed="${mine}" title="${mine ? "Remove your vote" : "Vote for this one"}"><span class="heart">${mine ? "♥" : "♡"}</span><b>${count}</b></button>
             </div>`;
@@ -366,6 +386,13 @@ function startParty(code) {
     toast(`${name} updated ✨`);
   });
 
+  // Pizza look: save the tapped sauce color / cheese right away ("auto" clears it)
+  document.addEventListener("change", async (e) => {
+    const { look, pizza } = e.target.dataset || {};
+    if (!look || !state.pizzas[pizza]) return;
+    await store.set(`pizzas/${pizza}/look/${look}`, e.target.value === "auto" ? null : e.target.value);
+  });
+
   // Show the icon picker only while "Topping" is chosen in an open editor
   document.addEventListener("change", (e) => {
     if (e.target.dataset?.f !== "category") return;
@@ -398,6 +425,12 @@ function startParty(code) {
       const input = document.querySelector("#pizzas .rename input");
       input?.focus();
       input?.select();
+    } else if (b.dataset.style) {
+      styling = styling === b.dataset.style ? null : b.dataset.style;
+      renderPizzas();
+    } else if ("styleDone" in b.dataset) {
+      styling = null;
+      renderPizzas();
     } else if (b.dataset.editItem) {
       editingItem = b.dataset.editItem;
       renderItems();

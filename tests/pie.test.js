@@ -68,3 +68,22 @@ test("berries and other new foods get sensible auto colors", () => {
   assert.equal(toppingColor("Dill pickles"), "#8fae3a");
   assert.equal(toppingColor("Grapes"), "#7d3c98");
 });
+
+test("a picked sauce color and cheese level override the guess", () => {
+  const items = [{ category: "sauce", name: "Marinara" }, { category: "cheese", name: "Mozz" }];
+  assert.match(pieHTML(items, { sauce: "pesto" }), /--sauce:#7da443;--sauce2:#7da443/);
+  assert.doesNotMatch(pieHTML(items, { cheese: "none" }), /class="cheese/);
+  assert.match(pieHTML([], { cheese: "lots" }), /class="cheese lots"/);
+  assert.match(pieHTML(items, { sauce: "made-up", cheese: "made-up" }), /--sauce:#d9472b/); // junk falls back to auto
+  assert.match(pieHTML(items, { sauce: "made-up", cheese: "made-up" }), /class="cheese"/);
+});
+
+test("look options match what the database rules allow", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { SAUCE_LOOKS, CHEESE_LOOKS } = await import("../pie.js");
+  const rules = JSON.parse(readFileSync(new URL("../database.rules.json", import.meta.url), "utf8"));
+  const look = rules.rules.parties.$party.pizzas.$id.look;
+  const allowed = (v) => v.match(/\^\(([^)]+)\)\$/)[1].split("|").sort();
+  assert.deepEqual(allowed(look.sauce[".validate"]), SAUCE_LOOKS.map(([k]) => k).filter((k) => k !== "auto").sort());
+  assert.deepEqual(allowed(look.cheese[".validate"]), CHEESE_LOOKS.map(([k]) => k).filter((k) => k !== "auto").sort());
+});
