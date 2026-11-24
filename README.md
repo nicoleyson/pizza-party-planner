@@ -15,15 +15,18 @@ Until Firebase is set up, the site runs in **demo mode** (data saved only in you
 1. Go to <https://console.firebase.google.com> → create a project (Google Analytics: off).
 2. Left sidebar → **Databases & Storage → Realtime Database** → **Create database** → any location → **Start in locked mode**.
 3. Open the **Rules** tab, paste the contents of [`database.rules.json`](database.rules.json), and click **Publish**.
-4. Copy the database address from the **Data** tab (like `https://your-project-default-rtdb.firebaseio.com`) into `databaseURL` in [`config.js`](config.js), and set `projectId` to match.
+4. Copy the database address from the **Data** tab (like `https://your-project-default-rtdb.firebaseio.com`). You'll need it in a moment.
+5. Security → **Authentication** → Sign-in method → enable **Google**.
+6. Project settings → **Your apps** → add a Web app. For running locally, copy [`config.example.js`](config.example.js) to `config.js` and fill in your values. `config.js` is gitignored, so your keys and project never end up in the repo, and anyone can reuse this repo with their own Firebase project.
 
-> The database address isn't a secret; it's meant to live in client code. The rules are what limit what people can read and write. No "web app" registration or API key is needed, since the site doesn't use sign-in.
+> These values aren't really secrets: the live site has to send them to every visitor's browser so it can talk to Firebase. Keeping the key out of the repo just stops it showing up in GitHub's code search and secret scanners. What actually protects the data is the database rules, plus the authorized-domains list for sign-in.
 
 ## 2. Publish on GitHub Pages
 
 1. Push this folder to a GitHub repo.
-2. Repo → **Settings → Pages** → Source: **Deploy from a branch** → `main` / `(root)` → Save.
-3. After a minute it's live at `https://<your-username>.github.io/<repo-name>/`.
+2. Repo → **Settings → Secrets and variables → Actions** → add four repository secrets from your Firebase web config: `FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_PROJECT_ID` and `FIREBASE_DATABASE_URL`.
+3. Repo → **Settings → Pages** → Source: **GitHub Actions**.
+4. Every push to `main` runs the tests, builds `config.js` from the secrets, and publishes ([`.github/workflows/pages.yml`](.github/workflows/pages.yml)). It's live at `https://<your-username>.github.io/<repo-name>/`.
 
 ## Hosting a party
 

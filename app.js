@@ -1,4 +1,3 @@
-import { firebaseConfig } from "./config.js";
 import { pieHTML, ICONS, safeIcon, SAUCE_LOOKS, CHEESE_LOOKS } from "./pie.js";
 import { parseCode, newCode, esc, cleanIds, voteCount, rankPizzas, groupItems, ingredientKey } from "./lib.js";
 
@@ -8,6 +7,10 @@ const PIZZA_CATS = ["sauce", "cheese", "topping"];
 const CAT_ONE = { sauce: "Sauce", cheese: "Cheese", topping: "Topping", other: "Other" };
 
 const $ = (id) => document.getElementById(id);
+
+// config.js holds the real keys and isn't in git (the deploy writes it from
+// GitHub secrets). A fresh clone without it falls back to the example.
+const { firebaseConfig } = await import("./config.js").catch(() => import("./config.example.js"));
 
 // ── Who am I ──
 // Everyone signs in with Google, so the database knows who's who and nobody

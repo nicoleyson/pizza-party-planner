@@ -1,0 +1,67 @@
+# Publishes the site to GitHub Pages on every push to main.
+# config.js isn't in the repo: it's built here from four repo secrets
+# (Settings → Secrets and variables → Actions → New repository secret):
+#   FIREBASE_API_KEY, FIREBASE_APP_ID, FIREBASE_PROJECT_ID, FIREBASE_DATABASE_URL
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run tests
+        run: npm test
+
+      - name: Write config.js from secrets
+        env:
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+        run: |
+          node -e '
+            const e = process.env;
+            const need = ["FIREBASE_API_KEY", "FIREBASE_APP_ID", "FIREBASE_PROJECT_ID", "FIREBASE_DATABASE_URL"];
+            const missing = need.filter((k) => !e[k]);
+            if (missing.length) { console.error("Missing repo secrets: " + missing.join(", ")); process.exit(1); }
+            const config = {
+              apiKey: e.FIREBASE_API_KEY.trim(),
+              authDomain: e.FIREBASE_PROJECT_ID.trim() + ".firebaseapp.com",
+              projectId: e.FIREBASE_PROJECT_ID.trim(),
+              databaseURL: e.FIREBASE_DATABASE_URL.trim(),
+              appId: e.FIREBASE_APP_ID.trim(),
+            };
+            require("fs").writeFileSync("config.js", "export const firebaseConfig = " + JSON.stringify(config, null, 2) + ";\n");
+          '
+
+      - name: Collect site files
+        run: |
+          mkdir _site
+          cp index.html app.js lib.js pie.js style.css config.js config.example.js _site/
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+      - id: deployment
+        uses: actions/deploy-pages@v4

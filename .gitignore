@@ -1,0 +1,3 @@
+# Your real Firebase keys live here. GitHub gets them from repo secrets at deploy time.
+config.js
+node_modules/
