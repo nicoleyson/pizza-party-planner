@@ -1,8 +1,8 @@
-# 🍕 Pizza Party
+# 🍕 Pizza Party Planner
 
 A tiny, free, no-accounts site for pizza-making parties. Guests type their name, say what ingredients they're bringing, build pizzas from what's actually coming, name them, and vote.
 
-**Private and reusable:** each party has a secret code in its invite link (`https://…/pizza-party/#pepperoni-k3x9q2mf7a`). Only people with the link can see or edit that party. The code is never in the repo, and the part after `#` isn't even sent to GitHub's servers. Hosts click **Host a new party** for a fresh code each time. Only emails you list under `hosts` in Firebase can host, so strangers can't fill your database with their own parties.
+**Private and reusable:** each party has a secret code in its invite link (`https://…/pizza-party-planner/#pepperoni-k3x9q2mf7a`). Only people with the link can see or edit that party. The code is never in the repo, and the part after `#` isn't even sent to GitHub's servers. Hosts click **Host a new party** for a fresh code each time. Only emails you list under `hosts` in Firebase can host, so strangers can't fill your database with their own parties.
 
 - Hosting: **GitHub Pages** (free)
 - Shared data: **Firebase Realtime Database** (free "Spark" plan, no credit card)

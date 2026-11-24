@@ -7,7 +7,7 @@ test("parseCode accepts a bare code, #code or a full invite link", () => {
   const code = "pepperoni-k3x9q2mf7a";
   assert.equal(parseCode(code), code);
   assert.equal(parseCode("#" + code), code);
-  assert.equal(parseCode(`https://someone.github.io/pizza-party/#${code}`), code);
+  assert.equal(parseCode(`https://someone.github.io/pizza-party-planner/#${code}`), code);
   assert.equal(parseCode(`  ${code.toUpperCase()}  `), code);
 });
 
