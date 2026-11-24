@@ -72,9 +72,8 @@
 <div id="party" hidden>
   <header class="board">
     <span class="h-emoji" aria-hidden="true">🍕</span>
-    <a href="#" id="leave" class="leave">Other party</a>
     <div id="meta-view">
-      <h1><span id="title">Pizza Party</span> <button class="ghost icon-btn" id="edit-meta" aria-label="Edit party name, details and date" data-tip="Edit party"><span>✏️</span></button></h1>
+      <h1><span id="title">Pizza Party</span></h1>
       <p id="party-date" class="when" hidden></p>
       <p id="details" class="sub"></p>
       <p id="invite-only" class="invite-only" hidden>🔒 Invite-only</p>
@@ -120,6 +119,10 @@
       <p>Ask the host to add you, or <button type="button" class="link" id="switch-account">try a different Google account</button>.</p>
     </div>
     <p id="account" class="account" hidden></p>
+    <div class="board-foot">
+      <a href="#" id="leave" class="leave">Other party</a>
+      <button type="button" class="ghost edit-party" id="edit-meta" aria-label="Edit party name, details and date"><span class="emo" aria-hidden="true">✏️</span>Edit party</button>
+    </div>
   </header>
 
   <main>

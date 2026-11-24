@@ -404,7 +404,7 @@ function startParty(code) {
     $("party-over").hidden = !done;
     $("over-host").hidden = !done || !isHost;
     scheduleWrapUp();
-    $("edit-meta").hidden = !isHost;
+    $("edit-meta").hidden = !isHost || !$("meta-form").hidden;
     if (!isHost) showMetaForm(false);
     $("guest-btn").hidden = !isHost || !account;
     if (!isHost) $("guest-panel").hidden = true;
@@ -774,6 +774,7 @@ function startParty(code) {
   function showMetaForm(on) {
     $("meta-form").hidden = !on;
     $("meta-view").hidden = on;
+    $("edit-meta").hidden = on || !canManage();
     if (on) {
       $("meta-title").value = state.meta.title || "";
       $("meta-details").value = state.meta.details || "";

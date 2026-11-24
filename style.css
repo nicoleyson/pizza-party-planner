@@ -70,7 +70,11 @@ h1 .icon-btn { vertical-align: middle; font-size: 1.1rem; text-shadow: none; }
 #meta-view .when[hidden] + .sub::before, #meta-view .when[hidden] + .sub::after { font-size: .85em; }
 #meta-view { width: 100%; }
 .invite-only { display: inline-block; margin-top: 10px; font-size: .85rem; font-weight: 700; background: var(--basil-wash); border-radius: 999px; padding: 1px 10px; }
-.leave { order: 99; margin-top: 16px; font-size: .9rem; font-weight: 700; color: var(--muted); }
+.board-foot { order: 99; width: 100%; margin-top: 16px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.leave { font-size: .9rem; font-weight: 700; color: var(--muted); }
+button.ghost.edit-party { margin-left: auto; min-height: 38px; padding: 0 14px; border: 2px solid var(--paper-edge); border-radius: 999px; font-size: .9rem; font-weight: 700; color: var(--ink); }
+button.ghost.edit-party:hover { border-color: var(--ink); }
+button.ghost.edit-party .emo { margin-right: 6px; }
 .leave:hover { color: var(--red); }
 
 /* Order ticket: torn zigzag top, ruled inside like an order slip. */
