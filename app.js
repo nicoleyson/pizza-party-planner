@@ -115,6 +115,7 @@ if (!db) {
 // ── Gate: join or host ──
 function showGate() {
   $("gate").hidden = false;
+  if (sessionStorage.notice) { toast(sessionStorage.notice); delete sessionStorage.notice; }
   // Only people the site owner added to hosts/ in Firebase can start parties.
   // The database rules enforce this; here we just explain it up front.
   const notHost = () => {
@@ -647,21 +648,33 @@ function startParty(code) {
     $("not-invited").hidden = false;
     $("not-invited-email").textContent = account?.user.email || "your account";
   };
+  // Load the party's title first: if the party doesn't exist (wrong or old link,
+  // or the host deleted it), go back to the join/host screen. The rules refuse
+  // everything else under a party that doesn't exist.
+  let loading = false;
   db.watch(`${ROOT}/meta`, (meta) => {
+    if (!meta.title) {
+      localStorage.removeItem("lastParty");
+      sessionStorage.notice = "That party doesn't exist anymore 🤷 Check the link, or host a new one.";
+      location.hash = "";
+      return;
+    }
     state.meta = meta;
     if (meta.uid === uid && !watchingGuests) {
       watchingGuests = true;
       db.watch(`${ROOT}/guests`, (g) => { state.guests = g; renderGuestPanel(); });
     }
     render();
-  }, blocked);
-  for (const part of ["items", "pizzas", "diets"]) {
-    db.watch(`${ROOT}/${part}`, (data) => { state[part] = cleanIds(data); render(); }, blocked);
-  }
-  db.watch(`${ROOT}/people`, (data) => {
-    state.people = cleanIds(data);
-    renderPeople();
-    if (!joined) { joined = true; joinParty(); }
+    if (loading) return;
+    loading = true;
+    for (const part of ["items", "pizzas", "diets"]) {
+      db.watch(`${ROOT}/${part}`, (data) => { state[part] = cleanIds(data); render(); }, blocked);
+    }
+    db.watch(`${ROOT}/people`, (data) => {
+      state.people = cleanIds(data);
+      renderPeople();
+      if (!joined) { joined = true; joinParty(); }
+    }, blocked);
   }, blocked);
 }
 
