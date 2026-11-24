@@ -12,13 +12,12 @@ Until Firebase is set up, the site runs in **demo mode** (data saved only in you
 
 ## 1. Set up Firebase (about 5 minutes)
 
-1. Go to <https://console.firebase.google.com> → **Add project** (Google Analytics: off).
-2. Left sidebar → **Build → Realtime Database** → **Create database** → any location → **Start in locked mode**.
+1. Go to <https://console.firebase.google.com> → create a project (Google Analytics: off).
+2. Left sidebar → **Databases & Storage → Realtime Database** → **Create database** → any location → **Start in locked mode**.
 3. Open the **Rules** tab, paste the contents of [`database.rules.json`](database.rules.json), and click **Publish**.
-4. Project overview (⚙️ → **Project settings**) → **Your apps** → click the **`</>`** (Web) icon → register an app (no hosting needed).
-5. Copy the `firebaseConfig` values it shows into [`config.js`](config.js). Make sure `databaseURL` is filled in.
+4. Copy the database address from the **Data** tab (like `https://your-project-default-rtdb.firebaseio.com`) into `databaseURL` in [`config.js`](config.js), and set `projectId` to match.
 
-> The Firebase web config isn't a secret; it's meant to live in client code. The rules are what limit what people can write.
+> The database address isn't a secret; it's meant to live in client code. The rules are what limit what people can read and write. No "web app" registration or API key is needed, since the site doesn't use sign-in.
 
 ## 2. Publish on GitHub Pages
 
