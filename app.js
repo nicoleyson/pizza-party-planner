@@ -351,8 +351,12 @@ function startParty(code) {
     }
   });
 
+  // IDs end up inside HTML attributes, so ignore anything that isn't a plain ID
+  // (the database rules reject them too; this is a second lock on the door).
+  const SAFE_ID = /^[-_A-Za-z0-9]{1,40}$/;
+  const cleanIds = (obj) => Object.fromEntries(Object.entries(obj || {}).filter(([k, v]) => SAFE_ID.test(k) && v && typeof v === "object"));
   db.watch(ROOT, (data) => {
-    state = { meta: data.meta || {}, items: data.items || {}, pizzas: data.pizzas || {} };
+    state = { meta: data.meta || {}, items: cleanIds(data.items), pizzas: cleanIds(data.pizzas) };
     render();
   });
 }

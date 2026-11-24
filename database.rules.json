@@ -16,7 +16,7 @@
         },
         "items": {
           "$id": {
-            ".write": "$party.matches(/^[a-z0-9-]{12,40}$/)",
+            ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && $id.matches(/^[-_A-Za-z0-9]{1,40}$/)",
             ".validate": "newData.hasChildren(['name', 'category', 'by', 'uid'])",
             "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
             "amount": { ".validate": "newData.isString() && newData.val().length <= 30" },
@@ -30,14 +30,14 @@
         },
         "pizzas": {
           "$id": {
-            ".write": "$party.matches(/^[a-z0-9-]{12,40}$/)",
+            ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && $id.matches(/^[-_A-Za-z0-9]{1,40}$/)",
             ".validate": "newData.hasChildren(['name', 'by', 'uid'])",
             "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
             "by": { ".validate": "newData.isString() && newData.val().length <= 40" },
             "uid": { ".validate": "newData.isString() && newData.val().length <= 40" },
             "createdAt": { ".validate": "newData.isNumber()" },
-            "ingredients": { "$i": { ".validate": "newData.isString() && newData.val().length <= 40" } },
-            "votes": { "$voter": { ".validate": "newData.isString() && newData.val().length <= 40" } },
+            "ingredients": { "$i": { ".validate": "newData.isString() && newData.val().matches(/^[-_A-Za-z0-9]{1,40}$/)" } },
+            "votes": { "$voter": { ".validate": "$voter.matches(/^[-A-Za-z0-9]{1,40}$/) && newData.isString() && newData.val().length <= 40" } },
             "$other": { ".validate": false }
           }
         },
