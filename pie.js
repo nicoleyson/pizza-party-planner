@@ -28,6 +28,12 @@ const TOPPINGS = [
   [/\bfigs?\b/, "#6d3b5e"],
   [/\bpotato(es)?\b/, "#e8cf8f"],
   [/\bartichokes?\b|\bzucchini\b|\bcourgettes?\b|\bbroccoli\b/, "#7fa65a"],
+  [/\bblueberr|\bblackberr|\bberr(y|ies)\b/, "#4b3f8f"],
+  [/\bstrawberr|\braspberr/, "#d63a4f"],
+  [/\bgrapes?\b/, "#7d3c98"],
+  [/\bpickles?\b|\bcucumbers?\b|\bpeas\b/, "#8fae3a"],
+  [/\bbananas?\b|\bmango(es)?\b/, "#f2c94c"],
+  [/\bsteak\b|\bbrisket\b/, "#7a3b2e"],
 ];
 
 const SAUCES = [
@@ -65,14 +71,24 @@ export function sauceColor(name) {
 
 // Icons people can pick when the auto-guess looks wrong.
 export const ICONS = [
+  // veggies
   ["🍅", "tomato"], ["🫒", "olive"], ["🍄", "mushroom"], ["🧅", "onion"], ["🧄", "garlic"],
-  ["🫑", "bell pepper"], ["🌶️", "chili"], ["🌿", "herbs"], ["🥬", "leafy greens"], ["🥦", "broccoli"],
-  ["🍆", "eggplant"], ["🥔", "potato"], ["🍠", "sweet potato"], ["🥕", "carrot"], ["🥑", "avocado"],
-  ["🍋", "lemon"], ["🍞", "bread / stuffing"], ["🌽", "corn"], ["🍍", "pineapple"], ["🍑", "peach"],
-  ["🍐", "pear"], ["🍎", "apple"], ["🍓", "strawberry"], ["🫐", "berries"], ["🍒", "cherry"],
-  ["🥓", "bacon"], ["🍗", "chicken / turkey"], ["🍖", "meat"], ["🌭", "sausage"], ["🦐", "shrimp"],
-  ["🐟", "fish"], ["🥚", "egg"], ["🍯", "honey"], ["🥜", "nuts"], ["🧈", "butter"],
-  ["🍫", "chocolate"], ["🍬", "candy"], ["🧂", "salt / spice"], ["🦄", "something magical"],
+  ["🫑", "bell pepper"], ["🌶️", "chili"], ["🌿", "herbs"], ["🌱", "sprouts / microgreens"], ["🥬", "leafy greens"],
+  ["🥦", "broccoli"], ["🍆", "eggplant"], ["🥒", "pickles / cucumber"], ["🫛", "peas"], ["🫘", "beans"],
+  ["🌽", "corn"], ["🥔", "potato"], ["🍠", "sweet potato"], ["🥕", "carrot"], ["🥑", "avocado"],
+  ["🫚", "ginger"],
+  // fruit
+  ["🍓", "strawberry"], ["🫐", "blueberries / berries"], ["🍒", "cherry"], ["🍇", "grapes"], ["🍍", "pineapple"],
+  ["🍑", "peach"], ["🍐", "pear"], ["🍎", "apple"], ["🍌", "banana"], ["🥭", "mango"],
+  ["🥝", "kiwi"], ["🍉", "watermelon"], ["🍊", "orange"], ["🍋", "lemon"], ["🥥", "coconut"],
+  // meat & seafood
+  ["🥓", "bacon"], ["🍗", "chicken / turkey"], ["🍖", "meat"], ["🥩", "steak"], ["🌭", "sausage"],
+  ["🦐", "shrimp"], ["🦀", "crab"], ["🦞", "lobster"], ["🦑", "squid / calamari"], ["🐙", "octopus"],
+  ["🐟", "fish"], ["🥚", "egg"],
+  // everything else
+  ["🧀", "extra cheese"], ["🍞", "bread / stuffing"], ["🍟", "fries"], ["🥨", "pretzel"], ["🧆", "falafel"],
+  ["🥜", "nuts"], ["🌰", "chestnut"], ["🍯", "honey"], ["🧈", "butter"], ["🧂", "salt / spice"],
+  ["🍫", "chocolate"], ["🍪", "cookie"], ["🍬", "candy"], ["🍭", "lollipop"], ["🦄", "something magical"],
 ];
 const ICON_SET = new Set(ICONS.map(([e]) => e));
 // Only draw icons from our list, so nothing odd from the database ends up on the page.

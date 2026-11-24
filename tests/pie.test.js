@@ -54,3 +54,17 @@ test("plain dough still draws", () => {
   assert.match(html, /class="pie"/);
   assert.doesNotMatch(html, /class="top/);
 });
+
+test("icon list has no duplicates and every icon fits the database limit", () => {
+  const emojis = ICONS.map(([e]) => e);
+  assert.equal(new Set(emojis).size, emojis.length, "duplicate icon");
+  for (const e of emojis) assert.ok(e.length <= 8, `${e} is too long for the rules (max 8)`);
+  for (const e of ["🍓", "🫐", "🍒", "🍇", "🥒", "🦑"]) assert.equal(safeIcon(e), e);
+});
+
+test("berries and other new foods get sensible auto colors", () => {
+  assert.equal(toppingColor("Blueberries"), "#4b3f8f");
+  assert.equal(toppingColor("Raspberries"), "#d63a4f");
+  assert.equal(toppingColor("Dill pickles"), "#8fae3a");
+  assert.equal(toppingColor("Grapes"), "#7d3c98");
+});
