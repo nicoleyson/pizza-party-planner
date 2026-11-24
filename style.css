@@ -366,7 +366,6 @@ ul.list li.editing { display: block; padding: 8px 0; }
 }
 .tag-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .tag-top > :first-child { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; column-gap: 6px; }
-.tag-top .rename { flex: 1 1 100%; }
 .pizza h3 { font-family: var(--display); font-weight: 400; font-size: 1.2rem; line-height: 1.15; color: var(--red); overflow-wrap: anywhere; }
 .pizza.leader h3 { font-size: 1.5rem; }
 .pizza-tools { display: flex; gap: 2px; margin-left: -4px; }
@@ -375,8 +374,6 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .pizza .ings { display: flex; flex-wrap: wrap; gap: 6px; }
 .pizza .ing { padding: 4px 12px; background: var(--field); border: 2px solid var(--paper-edge); border-radius: 999px; font-size: .92rem; font-weight: 700; }
 .pizza .ing.gone { text-decoration: line-through; color: var(--muted); }
-.rename { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.rename input { flex: 1; min-width: 140px; font-family: var(--display); color: var(--red); }
 .vote {
   flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
   min-width: 58px; padding: 0 12px; background: var(--paper); color: var(--ink);
@@ -395,25 +392,24 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .vote:disabled:hover { background: var(--paper); }
 .vote.on:disabled:hover { background: var(--basil); }
 
-/* Sauce color and cheese, changed right on a pizza's tag */
-.look-editor { margin-top: 10px; padding: 10px; background: var(--field); border-radius: 8px; display: grid; gap: 10px; }
-.look-row { display: grid; gap: 6px; }
-.look-row b { font-size: .85rem; color: var(--muted); }
+/* ✏️ on a pizza: name, toppings, sauce color and cheese, edited right on its tag */
+.pizza-editor { margin-top: 10px; padding: 10px; background: var(--field); border-radius: 8px; display: grid; gap: 12px; }
+.edit-row { display: grid; gap: 6px; }
+.edit-row > b { font-size: .85rem; color: var(--muted); }
+.edit-row input[data-f="name"] { font-family: var(--display); color: var(--red); }
+.pizza-editor h5 { margin: 4px 0 0; font-size: .85rem; display: flex; align-items: center; gap: 6px; }
+.pizza-editor .chip.gone > span { text-decoration: line-through; color: var(--muted); }
+.pizza-editor .chip.gone input:checked + span { color: var(--paper); }
+.edit-note { margin: 0; font-size: .9rem; color: var(--muted); }
 .swatches { display: flex; flex-wrap: wrap; gap: 6px; }
 .swatch { position: relative; }
 .swatch input { position: absolute; opacity: 0; pointer-events: none; width: auto; min-height: 0; }
 .swatch span { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 11px 0 7px; border: 2px solid var(--paper-edge); border-radius: 999px; font-size: .85rem; font-weight: 700; cursor: pointer; }
-.look-row:last-of-type .swatch span { padding-left: 11px; }
+.swatch input[data-f="cheese"] + span { padding-left: 11px; }
 .swatch .dot { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--ink); font-style: normal; font-size: 10px; display: grid; place-items: center; }
 .swatch .dot.auto { border-style: dashed; }
 .swatch input:checked + span { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 .swatch input:focus-visible + span { outline: 3px solid var(--basil); outline-offset: 2px; }
-.look-editor > button { justify-self: start; min-height: 38px; }
-.toppings-editor { margin-top: 10px; padding: 10px; background: var(--field); border-radius: 8px; display: grid; gap: 10px; }
-.toppings-editor h4 { margin: 0; font-size: .9rem; display: flex; align-items: center; gap: 6px; }
-.toppings-editor .chip.gone > span { text-decoration: line-through; color: var(--muted); }
-.toppings-editor .chip.gone input:checked + span { color: var(--paper); }
-.toppings-note { margin: 0; font-size: .9rem; color: var(--muted); }
 
 /* The pie drawing (pie.js). --size sets everything. */
 .pie {

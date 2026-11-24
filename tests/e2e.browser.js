@@ -258,3 +258,39 @@ check("parties saved by older versions still show up right", async () => {
   assert.ok(!(await visible("#party-date")), "no date shown");
   assert.match(await text("#tally-lede"), /hasn't set how many/);
 });
+
+check("✏️ edits a pizza's name, toppings and look; toppings lock for its maker once others vote", async () => {
+  const party = basicParty();
+  party.pizzas = { z1: { name: "Fungi Fiesta", by: "Brad", uid: "brad", createdAt: 1, picks: ["Mozzarella", "Mushrooms"], votes: { brad: "Brad", damian: "Damian" } } };
+  await open(party, "brad", "Brad");
+  const form = `#pizzas [data-pizza-form="z1"]`;
+  await click(`#pizzas [data-edit-pizza="z1"]`);
+  await until(`!!document.querySelector('${form}')`, "the pizza editor");
+  assert.equal(await js(`!!document.querySelector('${form} [data-f="pick"]')`), false, "Damian voted, so Brad can't change toppings");
+  assert.match(await text(`${form} .edit-note`), /only the host/);
+  await fill(`${form} [data-f="name"]`, "Fungi Forever");
+  await js(`document.querySelector('${form} [data-f="cheese"][value="lots"]').click(); true`);
+  await submit(form);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].pizzas.z1.name === "Fungi Forever"`, "the new name saved");
+  const z1 = (await saved()).pizzas.z1;
+  assert.equal(z1.look?.cheese, "lots");
+  assert.deepEqual(z1.picks, ["Mozzarella", "Mushrooms"], "toppings untouched");
+
+  // Brad renames what he's bringing: the pizza follows instead of crossing it out
+  await click(`#items [data-edit-item="i3"]`);
+  await fill(`#items [data-edit-form] [data-f="name"]`, "Wild mushrooms");
+  await submit(`#items [data-edit-form]`);
+  await until(`document.querySelector('#pizzas [data-key="z1"] .ings')?.textContent.includes("Wild mushrooms")`, "the renamed topping on the pizza");
+  assert.equal(await js(`!!document.querySelector('#pizzas .ing.gone')`), false, "nothing crossed out");
+
+  // The host can still change the toppings
+  await open(null, "nicole", "Nicole");
+  await click(`#pizzas [data-edit-pizza="z1"]`);
+  await until(`!!document.querySelector('${form} [data-f="pick"]')`, "toppings in the host's editor");
+  assert.deepEqual(await js(`[...document.querySelectorAll('${form} [data-f="pick"]:checked')].map((i) => i.value).sort()`), ["Mozzarella", "Wild mushrooms"]);
+  await js(`document.querySelector('${form} [data-f="pick"][value="Fresh basil"]').click(); true`);
+  await submit(form);
+  await until(`(JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].pizzas.z1.picks || []).includes("Fresh basil")`, "the new toppings saved");
+  assert.deepEqual((await saved()).pizzas.z1.picks.sort(), ["Fresh basil", "Mozzarella", "Wild mushrooms"]);
+  assert.equal((await saved()).pizzas.z1.name, "Fungi Forever", "the name stays");
+});

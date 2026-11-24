@@ -306,12 +306,10 @@ function startParty(code) {
   const isOwner = () => state.meta.uid === uid;
   const canManage = () => isOwner() || state.cohosts.includes(uid);
   let watchingGuests = false;
-  let renaming = null; // pizza id being renamed inline
+  let editingPizza = null; // pizza id whose name, toppings and look are being edited
   let armed = null; // "item:<id>", "pizza:<id>" or "diet:<id>" waiting for a second tap to delete
   let armTimer;
   let editingItem = null; // ingredient id being edited inline
-  let styling = null; // pizza id whose look (sauce color / cheese) is being changed
-  let toppingsFor = null; // pizza id whose toppings are being changed
   // Whoever proposed a pizza can change its toppings until someone else votes for it.
   // After that only the host and cohosts can, so nobody's vote gets swapped out from under them.
   const othersVoted = (p) => Object.keys(p.votes || {}).some((v) => v !== p.uid);
@@ -606,55 +604,60 @@ function startParty(code) {
   }
   $("builder").addEventListener("change", updatePreview);
 
-  // Pick a sauce color and how cheesy the drawing is. Saves as you tap.
-  function lookEditor(id, look) {
-    const group = (kind, options, current) =>
+  // ✏️ on a pizza: change its name, toppings, sauce color and cheese in one go.
+  // Anyone can rename it or change its look; toppings follow canEditToppings.
+  // `d` is what's on screen right now: { name, picks: Set of names, sauce, cheese }.
+  function pizzaEditor(id, p, current, d) {
+    const swatches = (kind, options) =>
       options
         .map(([key, label, color]) => {
-          const on = (current || "auto") === key;
           const dot = kind === "sauce" ? (color ? `<i class="dot" style="background:${color}"></i>` : `<i class="dot auto">✨</i>`) : "";
-          return `<label class="swatch"><input type="radio" name="${kind}-${id}" value="${key}" data-look="${kind}" data-pizza="${id}" ${on ? "checked" : ""}><span>${dot}${label}</span></label>`;
+          return `<label class="swatch"><input type="radio" name="${kind}-${id}" value="${key}" data-f="${kind}" ${d[kind] === key ? "checked" : ""}><span>${dot}${label}</span></label>`;
         })
         .join("");
-    return `<div class="look-editor">
-      <div class="look-row"><b>Sauce</b><div class="swatches">${group("sauce", SAUCE_LOOKS, look.sauce)}</div></div>
-      <div class="look-row"><b>Cheese</b><div class="swatches">${group("cheese", CHEESE_LOOKS, look.cheese)}</div></div>
-      <button type="button" class="secondary" data-style-done>Done</button>
-    </div>`;
-  }
-
-  // Change a pizza's toppings: everything anyone's bringing, with this pizza's ticked.
-  // Toppings nobody's bringing any more show crossed out, so you can keep or drop them.
-  function toppingsEditor(id, current, drafts) {
-    const on = (name) => (drafts ? drafts.has(name) : current.some((w) => (w.g ? w.g.name : w.name) === name));
-    const chip = (name, label, cls = "") =>
-      `<label class="chip ${cls}" data-key="${esc(name)}"><input type="checkbox" value="${esc(name)}" ${on(name) ? "checked" : ""}><span>${label}</span></label>`;
-    const cats = PIZZA_CATS.map((cat) => {
-      const groups = groupItems(itemsIn(cat));
-      if (!groups.length) return "";
-      return `<div class="cat cat-${cat}"><h4><span class="emo">${EMOJI[cat]}</span>${CATS[cat]}</h4><div class="chips">${groups
-        .map((g) => { const icon = iconOf(g); return chip(g.name, `${icon ? `<span class="emo">${icon}</span>` : ""}${esc(g.name)}`); })
-        .join("")}</div></div>`;
-    }).join("");
-    const gone = current.filter((w) => !w.g && w.name !== "removed");
-    const goneHTML = gone.length
-      ? `<div class="cat"><h4>Nobody's bringing these now</h4><div class="chips">${gone.map((w) => chip(w.name, esc(w.name), "gone")).join("")}</div></div>`
-      : "";
-    const p = state.pizzas[id];
-    const note = othersVoted(p) ? `<p class="toppings-note">People already voted for this one, so let them know what changed.</p>` : "";
-    return `<form class="toppings-editor" data-toppings-form="${id}">${note}${cats}${goneHTML}
-      <div class="row edit-actions"><button>Save toppings</button><button type="button" class="secondary" data-cancel-toppings>Cancel</button></div>
+    let toppings;
+    if (canEditToppings(p)) {
+      const chip = (name, label, cls = "") =>
+        `<label class="chip ${cls}" data-key="${esc(name)}"><input type="checkbox" data-f="pick" value="${esc(name)}" ${d.picks.has(name) ? "checked" : ""}><span>${label}</span></label>`;
+      const cats = PIZZA_CATS.map((cat) => {
+        const groups = groupItems(itemsIn(cat));
+        if (!groups.length) return "";
+        return `<div class="cat cat-${cat}"><h5><span class="emo">${EMOJI[cat]}</span>${CATS[cat]}</h5><div class="chips">${groups
+          .map((g) => { const icon = iconOf(g); return chip(g.name, `${icon ? `<span class="emo">${icon}</span>` : ""}${esc(g.name)}`); })
+          .join("")}</div></div>`;
+      }).join("");
+      // Toppings nobody's bringing any more show crossed out, so you can keep or drop them
+      const gone = current.filter((w) => !w.g && w.name !== "removed");
+      const goneHTML = gone.length
+        ? `<div class="cat"><h5>Nobody's bringing these now</h5><div class="chips">${gone.map((w) => chip(w.name, esc(w.name), "gone")).join("")}</div></div>`
+        : "";
+      const note = othersVoted(p) ? `<p class="edit-note">People already voted for this one, so let them know what changed.</p>` : "";
+      toppings = `${note}${cats}${goneHTML}`;
+    } else {
+      const who = p.uid === uid ? "" : `${esc(p.by)} (until someone else votes) or `;
+      toppings = `<p class="edit-note">🔒 ${othersVoted(p) && p.uid === uid ? "People have voted on this one, so only the host can change its toppings." : `Only ${who}the host can change its toppings.`}</p>`;
+    }
+    return `<form class="pizza-editor" data-pizza-form="${id}">
+      <label class="edit-row"><b>Name</b><input data-f="name" maxlength="60" required value="${esc(d.name)}" aria-label="Pizza name"></label>
+      <div class="edit-row"><b>Toppings</b>${toppings}</div>
+      <div class="edit-row"><b>Sauce</b><div class="swatches">${swatches("sauce", SAUCE_LOOKS)}</div></div>
+      <div class="edit-row"><b>Cheese</b><div class="swatches">${swatches("cheese", CHEESE_LOOKS)}</div></div>
+      <div class="row edit-actions"><button>Save</button><button type="button" class="secondary" data-cancel-pizza>Cancel</button></div>
     </form>`;
   }
+  // What's on screen in the open pizza editor, so live updates don't wipe it
+  const pizzaDraft = (f) => f && {
+    name: f.querySelector('[data-f="name"]').value,
+    picks: new Set([...f.querySelectorAll('[data-f="pick"]:checked')].map((i) => i.value)),
+    sauce: f.querySelector('[data-f="sauce"]:checked')?.value || "auto",
+    cheese: f.querySelector('[data-f="cheese"]:checked')?.value || "auto",
+  };
 
   function renderPizzas() {
-    // Keep whatever someone is typing in a rename box across live updates
-    const draftEl = document.querySelector("#pizzas .rename input");
-    const draft = draftEl?.value;
-    const hadFocus = draftEl && document.activeElement === draftEl;
-    // ...and whatever's ticked in an open toppings editor
-    const tf = document.querySelector("#pizzas [data-toppings-form]");
-    const toppingDrafts = tf?.dataset.toppingsForm === toppingsFor ? new Set([...tf.querySelectorAll("input:checked")].map((i) => i.value)) : null;
+    // Keep what's in an open pizza editor (and where the cursor was) across live updates
+    const openForm = document.querySelector("#pizzas [data-pizza-form]");
+    const draft = openForm?.dataset.pizzaForm === editingPizza ? pizzaDraft(openForm) : null;
+    const focused = openForm?.contains(document.activeElement) && document.activeElement.dataset.f === "name";
 
     const list = rankPizzas(state.pizzas);
     const byKey = ingredientIndex(groupItems(Object.entries(state.items)));
@@ -693,33 +696,34 @@ function startParty(code) {
                 return `<span class="ing" title="from ${esc(who)}">${icon ? `<span class="emo">${icon}</span>` : ""}${esc(g.name)}</span>`;
               })
               .join("");
-            const pieItems = unique.filter((w) => w.g).map(({ g }) => ({ ...g.entries[0][1], icon: g.icon }));
-            const heading =
-              renaming === id
-                ? `<form class="rename" data-rename-form="${id}">
-                     <input maxlength="60" required value="${esc(draft ?? p.name)}" aria-label="Pizza name">
-                     <button>Save</button><button type="button" class="ghost" data-cancel-rename>Cancel</button>
-                   </form>`
-                : `<h3>${esc(p.name)}</h3>${done ? "" : `<div class="pizza-tools">
-                     <button class="ghost icon-btn" data-rename="${id}" aria-label="Rename ${esc(p.name)}" data-tip="Rename"><span>✏️</span></button>
-                     ${canEditToppings(p) ? `<button class="ghost icon-btn" data-toppings="${id}" aria-label="Change the toppings on ${esc(p.name)}" aria-expanded="${toppingsFor === id}" data-tip="Toppings"><span>🍅</span></button>` : ""}
-                     <button class="ghost icon-btn" data-style="${id}" aria-label="Change the sauce color and cheese for ${esc(p.name)}" aria-expanded="${styling === id}" data-tip="Sauce &amp; cheese"><span>🎨</span></button>
+            const editing = editingPizza === id && !done;
+            // While editing, the drawing shows what's ticked so far
+            const d = editing && (draft || {
+              name: p.name,
+              picks: new Set(unique.map((w) => (w.g ? w.g.name : w.name))),
+              sauce: p.look?.sauce || "auto",
+              cheese: p.look?.cheese || "auto",
+            });
+            const pieFrom = editing && canEditToppings(p) ? [...d.picks].map((n) => byKey.get(ingredientKey(n))).filter(Boolean) : unique.filter((w) => w.g).map((w) => w.g);
+            const pieItems = [...new Set(pieFrom)].map((g) => ({ ...g.entries[0][1], icon: g.icon }));
+            const pieLook = editing ? { ...(d.sauce !== "auto" && { sauce: d.sauce }), ...(d.cheese !== "auto" && { cheese: d.cheese }) } : p.look;
+            const heading = `<h3>${esc(p.name)}</h3>${done ? "" : `<div class="pizza-tools">
+                     <button class="ghost icon-btn" data-edit-pizza="${id}" aria-label="Edit ${esc(p.name)}" aria-expanded="${editing}" data-tip="Edit"><span>✏️</span></button>
                      ${p.uid === uid ? delBtn("pizza", id) : ""}</div>`}`;
             const voteBtn = `<button class="vote ${mine ? "on" : ""}" data-vote="${id}" aria-pressed="${mine}" ${done ? "disabled" : ""} aria-label="${done ? `${count} vote${count === 1 ? "" : "s"}` : mine ? "Remove your vote" : "Vote for this one"}">${done ? "" : `<span class="box" aria-hidden="true">${mine ? "✓" : ""}</span>${mine ? "Voted" : "Vote"}`}<b>${count}</b></button>`;
             return `<div class="pizza ${lead ? "leader" : ""}" data-key="${id}">
-              <div class="plate">${lead ? '<span class="crown" role="img" aria-label="Most votes">👑</span>' : ""}${pieHTML(pieItems, p.look)}</div>
+              <div class="plate">${lead ? '<span class="crown" role="img" aria-label="Most votes">👑</span>' : ""}${pieHTML(pieItems, pieLook)}</div>
               <div class="body">
                 <div class="tag-top"><div>${heading}</div>${voteBtn}</div>
                 <div class="by">${byLine(p.by, Object.values(votes))}</div>
                 <div class="ings">${ings || `<span class="ing">just dough, apparently</span>`}</div>
-                ${styling === id && !done ? lookEditor(id, p.look || {}) : ""}
-                ${toppingsFor === id && canEditToppings(p) ? toppingsEditor(id, unique, toppingDrafts) : ""}
+                ${editing ? pizzaEditor(id, p, unique, d) : ""}
               </div>
             </div>${cut}`;
           })
           .join("")
       : `<p class="empty">${done ? "No pizzas were proposed." : "No pizzas yet. Build one above."}</p>`);
-    if (hadFocus) document.querySelector("#pizzas .rename input")?.focus();
+    if (focused) document.querySelector('#pizzas [data-pizza-form] [data-f="name"]')?.focus();
     renderTally(list, goal, done);
   }
 
@@ -872,40 +876,38 @@ function startParty(code) {
     toast(`${name} updated ✨`);
   });
 
-  // Pizza look: save the tapped sauce color / cheese right away ("auto" clears it)
-  document.addEventListener("change", async (e) => {
-    const { look, pizza } = e.target.dataset || {};
-    if (!look || !state.pizzas[pizza]) return;
-    await store.set(`pizzas/${pizza}/look/${look}`, e.target.value === "auto" ? null : e.target.value);
-  });
+  // Redraw the pie as you tick toppings or tap a sauce color in the pizza editor
+  $("pizzas").addEventListener("change", (e) => e.target.closest("[data-pizza-form]") && renderPizzas());
 
+  // Save the pizza editor: only what changed, and toppings only if you're allowed
   document.addEventListener("submit", async (e) => {
-    const f = e.target.closest("[data-toppings-form]");
+    const f = e.target.closest("[data-pizza-form]");
     if (!f) return;
     e.preventDefault();
-    const id = f.dataset.toppingsForm;
+    const id = f.dataset.pizzaForm;
     const p = state.pizzas[id];
-    if (!p || !canEditToppings(p)) return;
-    const picks = [...new Set([...f.querySelectorAll("input:checked")].map((i) => i.value.trim().slice(0, 60)))].filter(Boolean);
-    if (!picks.length) return toast("Pick at least one ingredient");
-    toppingsFor = null;
-    try {
-      await store.set(`pizzas/${id}/picks`, picks);
-      toast(`${p.name} has new toppings 🍕`);
-    } catch {
-      toast("Couldn't save the toppings, sorry 😕");
+    if (!p || over()) return;
+    const d = pizzaDraft(f);
+    const name = d.name.trim().slice(0, 60);
+    if (!name) return;
+    const picks = [...new Set([...d.picks].map((n) => n.trim().slice(0, 60)))].filter(Boolean);
+    const toppings = canEditToppings(p);
+    if (toppings && !picks.length) return toast("Pick at least one ingredient");
+    const old = Array.isArray(p.picks) ? p.picks : null;
+    const writes = [];
+    if (name !== p.name) writes.push([`pizzas/${id}/name`, name]);
+    if (toppings && (!old || old.length !== picks.length || old.some((n, i) => n !== picks[i]))) writes.push([`pizzas/${id}/picks`, picks]);
+    for (const kind of ["sauce", "cheese"]) {
+      const v = d[kind] === "auto" ? null : d[kind];
+      if (v !== (p.look?.[kind] ?? null)) writes.push([`pizzas/${id}/look/${kind}`, v]);
     }
-    renderPizzas();
-  });
-
-  document.addEventListener("submit", async (e) => {
-    const f = e.target.closest("[data-rename-form]");
-    if (!f) return;
-    e.preventDefault();
-    const name = f.querySelector("input").value.trim().slice(0, 60);
-    const id = f.dataset.renameForm;
-    renaming = null;
-    if (name && state.pizzas[id]) await store.set(`pizzas/${id}/name`, name);
+    editingPizza = null;
+    try {
+      for (const [path, val] of writes) await store.set(path, val);
+      if (writes.length) toast(`${name} updated 🍕`);
+    } catch {
+      toast("Couldn't save all of that, sorry 😕");
+    }
     renderPizzas();
   });
 
@@ -917,23 +919,12 @@ function startParty(code) {
       if (!by) return;
       const id = b.dataset.vote;
       await store.set(`pizzas/${id}/votes/${uid}`, state.pizzas[id]?.votes?.[uid] ? null : by);
-    } else if (b.dataset.rename) {
-      renaming = b.dataset.rename;
+    } else if (b.dataset.editPizza) {
+      editingPizza = editingPizza === b.dataset.editPizza ? null : b.dataset.editPizza;
       renderPizzas();
-      const input = document.querySelector("#pizzas .rename input");
-      input?.focus();
-      input?.select();
-    } else if (b.dataset.toppings) {
-      toppingsFor = toppingsFor === b.dataset.toppings ? null : b.dataset.toppings;
-      renderPizzas();
-    } else if ("cancelToppings" in b.dataset) {
-      toppingsFor = null;
-      renderPizzas();
-    } else if (b.dataset.style) {
-      styling = styling === b.dataset.style ? null : b.dataset.style;
-      renderPizzas();
-    } else if ("styleDone" in b.dataset) {
-      styling = null;
+      document.querySelector('#pizzas [data-pizza-form] [data-f="name"]')?.focus();
+    } else if ("cancelPizza" in b.dataset) {
+      editingPizza = null;
       renderPizzas();
     } else if (b.dataset.meToo) {
       // Bring some of what someone else is bringing: same name/type/icon, your own amount
@@ -959,9 +950,6 @@ function startParty(code) {
     } else if ("cancelEdit" in b.dataset) {
       editingItem = null;
       renderItems();
-    } else if ("cancelRename" in b.dataset) {
-      renaming = null;
-      renderPizzas();
     } else if (b.dataset.del) {
       // Two taps to delete, no pop-up needed
       const [kind, id] = b.dataset.del.split(":");
