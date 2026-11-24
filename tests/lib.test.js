@@ -136,3 +136,14 @@ test("only people on the hosts list can start a party, and party data needs a re
     assert.match(write, /child\('meta'\)\.exists\(\)/, `${node} writes need an existing party`);
   }
 });
+
+test("the deploy publishes every file the page loads", () => {
+  const workflow = readFileSync(new URL("../.github/workflows/pages.yml", import.meta.url), "utf8");
+  const copied = workflow.match(/cp (.+) _site\//)[1].split(/\s+/);
+  const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), "utf8");
+  const used = new Set(["index.html", "config.js", "config.example.js"]);
+  for (const m of read("index.html").matchAll(/(?:src|href)="([\w.-]+\.(?:js|css|svg))"/g)) used.add(m[1]);
+  for (const m of read("style.css").matchAll(/url\("?([\w.-]+\.(?:svg|png|jpg|webp))"?\)/g)) used.add(m[1]);
+  for (const m of read("app.js").matchAll(/from "\.\/([\w.-]+\.js)"/g)) used.add(m[1]);
+  for (const f of used) assert.ok(copied.includes(f), `${f} isn't copied to the site in pages.yml`);
+});

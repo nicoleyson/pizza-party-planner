@@ -22,19 +22,16 @@
   --display: "Sniglet", "Nunito", ui-rounded, system-ui, sans-serif;
   font-family: "Nunito", ui-rounded, system-ui, -apple-system, sans-serif;
   color: var(--ink);
-  background: var(--paper);
+  /* Confetti on the page itself (not just the body), so it reaches the bottom
+     of the window even when the content is short. */
+  background: var(--paper) url("confetti.svg") 0 0 / 280px 280px;
+  min-height: 100%;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body {
   margin: 0;
   line-height: 1.45;
-  /* scattered sprinkles */
-  background:
-    radial-gradient(circle, #ffc9b8 0 2.5px, transparent 3.5px) 8px 14px / 74px 74px,
-    radial-gradient(circle, #ffe08a 0 2.5px, transparent 3.5px) 45px 50px / 74px 74px,
-    radial-gradient(circle, #c5e6b3 0 2px, transparent 3px) 30px 2px / 96px 96px,
-    var(--paper);
 }
 
 /* striped pizzeria awning with a scalloped edge */
