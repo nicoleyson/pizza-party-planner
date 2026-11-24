@@ -22,12 +22,7 @@
   --display: "Sniglet", "Nunito", ui-rounded, system-ui, sans-serif;
   font-family: "Nunito", ui-rounded, system-ui, -apple-system, sans-serif;
   color: var(--ink);
-  /* Confetti on the page itself (not just the body), so it reaches the bottom
-     of the window even when the content is short. */
-  background:
-    url("confetti-top.svg") 0 50px / 640px 520px repeat-x,
-    url("confetti.svg") 0 0 / 460px 460px,
-    var(--paper);
+  background: var(--paper);
   min-height: 100%;
 }
 * { box-sizing: border-box; }
@@ -36,6 +31,21 @@ body {
   margin: 0;
   line-height: 1.45;
 }
+
+/* 🎉 confetti that falls as you scroll (drawn by confetti.js) */
+.confetti-layer { position: fixed; inset: 0; z-index: -2; overflow: hidden; pointer-events: none; }
+.cf { position: absolute; left: 0; top: 0; display: block; will-change: transform; }
+.cf-paper { border-radius: 1.5px; }
+.cf-dot { border-radius: 50%; }
+.cf-curl { border: 3px solid currentColor; border-color: currentColor currentColor transparent transparent; border-radius: 50%; }
+
+/* party poppers bursting beside the top card, on screens wide enough to fit them */
+.poppers { position: absolute; top: 96px; left: 0; right: 0; height: 0; z-index: -1; pointer-events: none; display: none; }
+.popper { position: absolute; width: 190px; }
+.popper svg { display: block; width: 100%; height: auto; }
+.popper.left { right: calc(50% + 352px); }
+.popper.right { left: calc(50% + 352px); transform: scaleX(-1); }
+@media (min-width: 1150px) { .poppers { display: block; } }
 
 /* striped pizzeria awning with a scalloped edge */
 .awning {
