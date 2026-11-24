@@ -45,7 +45,7 @@ body {
 .popper svg { display: block; width: 100%; height: auto; }
 .popper.left { right: calc(50% + 352px); }
 .popper.right { left: calc(50% + 352px); transform: scaleX(-1); }
-@media (min-width: 1150px) { .poppers { display: block; } }
+@media (min-width: 1150px) { .poppers { display: block !important; } }
 
 /* striped pizzeria awning with a scalloped edge */
 .awning {

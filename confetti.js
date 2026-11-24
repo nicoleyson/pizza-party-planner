@@ -87,7 +87,7 @@ addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setT
 still.addEventListener?.("change", draw);
 
 // ── Party poppers next to the top card (wide screens only, see style.css) ──
-const POPPER = `<svg viewBox="0 0 200 200" aria-hidden="true">
+const POPPER = `<svg viewBox="0 0 200 200" width="190" height="190" aria-hidden="true">
   <g fill="none" stroke-linecap="round" stroke-width="4.5">
     <path d="M86 104 q8 -34 34 -44 t30 -46" stroke="#ff7aa2"/>
     <path d="M96 114 q28 -14 46 -6 t42 -22" stroke="#5bb6f0"/>
@@ -113,6 +113,7 @@ const POPPER = `<svg viewBox="0 0 200 200" aria-hidden="true">
 </svg>`;
 const poppers = document.createElement("div");
 poppers.className = "poppers";
+poppers.style.display = "none"; // style.css shows them on wide screens; stays hidden if the stylesheet is stale
 poppers.setAttribute("aria-hidden", "true");
 poppers.innerHTML = `<div class="popper left">${POPPER}</div><div class="popper right">${POPPER}</div>`;
 document.body.prepend(poppers);
