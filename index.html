@@ -48,15 +48,21 @@
   <main>
     <section>
       <h2>What are you bringing?</h2>
-      <form id="item-form" class="row">
-        <select id="item-cat" aria-label="Category">
-          <option value="sauce">Sauce</option>
-          <option value="cheese">Cheese</option>
-          <option value="topping" selected>Topping</option>
-          <option value="other">Dough / drinks / other</option>
-        </select>
-        <input id="item-name" maxlength="60" placeholder="e.g. fresh basil" required aria-label="Ingredient">
-        <input id="item-amount" class="amount" maxlength="30" placeholder="how much? (optional)" title="e.g. 2 bunches, 1 jar, lots" aria-label="Amount (optional)">
+      <form id="item-form" class="item-form">
+        <label>Type
+          <select id="item-cat">
+            <option value="sauce">Sauce</option>
+            <option value="cheese">Cheese</option>
+            <option value="topping" selected>Topping</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <label>Ingredient
+          <input id="item-name" maxlength="60" placeholder="e.g. fresh basil" required>
+        </label>
+        <label><span>How much <span class="opt">(optional)</span></span>
+          <input id="item-amount" maxlength="30" placeholder="e.g. 2 bunches">
+        </label>
         <button>Add</button>
       </form>
       <div id="items"></div>

@@ -157,7 +157,7 @@ function startParty(code) {
         const list = itemsIn(cat);
         if (!list.length) return "";
         return `<div class="cat"><h3>${label}</h3><ul class="list">${list
-          .map(([id, it]) => `<li><span>${esc(it.name)}${it.amount ? `<span class="amt">${esc(it.amount)}</span>` : ""} <span class="who">— ${esc(it.by)}</span></span>${
+          .map(([id, it]) => `<li><span><span class="item-name">${esc(it.name)}</span>${it.amount ? `<span class="amt">${esc(it.amount)}</span>` : ""}<span class="who">from ${esc(it.by)}</span></span>${
             it.uid === uid ? `<button class="ghost" data-del-item="${id}" title="Remove">✕</button>` : ""
           }</li>`)
           .join("")}</ul></div>`;
