@@ -162,6 +162,10 @@ function startParty(code) {
     $("title").textContent = title;
     document.title = title;
     $("details").textContent = state.meta.details || "";
+    // Only the browser that created the party can edit its name/details
+    const isHost = state.meta.uid === uid;
+    $("edit-meta").hidden = !isHost;
+    if (!isHost) showMetaForm(false);
     renderItems();
     renderBuilder();
     renderPizzas();
@@ -283,8 +287,8 @@ function startParty(code) {
     toast(`${name} is in the oven 🍕🔥`);
   });
 
-  // Party name + details: anyone at the party can edit, right in the header
-  const showMetaForm = (on) => {
+  // Party name + details: the creator edits them right in the header
+  function showMetaForm(on) {
     $("meta-form").hidden = !on;
     $("meta-view").hidden = on;
     if (on) {
@@ -292,14 +296,14 @@ function startParty(code) {
       $("meta-details").value = state.meta.details || "";
       $("meta-title").focus();
     }
-  };
+  }
   $("edit-meta").addEventListener("click", () => showMetaForm(true));
   $("meta-cancel").addEventListener("click", () => showMetaForm(false));
   $("meta-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const title = $("meta-title").value.trim().slice(0, 60);
-    if (!title) return;
-    await store.set("meta", { uid, createdAt: Date.now(), ...state.meta, title, details: $("meta-details").value.trim().slice(0, 200) });
+    if (!title || state.meta.uid !== uid) return;
+    await store.set("meta", { ...state.meta, title, details: $("meta-details").value.trim().slice(0, 200) });
     showMetaForm(false);
     toast("Party updated ✨");
   });

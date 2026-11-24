@@ -6,7 +6,7 @@
       "$party": {
         ".read": "$party.matches(/^[a-z0-9-]{12,40}$/)",
         "meta": {
-          ".write": "$party.matches(/^[a-z0-9-]{12,40}$/)",
+          ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && (!data.exists() || data.child('uid').val() === newData.child('uid').val())",
           ".validate": "newData.hasChildren(['title', 'uid'])",
           "title": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
           "details": { ".validate": "newData.isString() && newData.val().length <= 200" },
