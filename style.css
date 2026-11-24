@@ -5,7 +5,7 @@
 :root {
   color-scheme: light;
   --cloth: #fbf7f0;
-  --check: rgba(216, 58, 46, .5);
+  --check: rgba(200, 70, 60, .3); /* the red, about 12% less saturated, so the cloth sits back */
   --paper: #fffdf7;
   --paper-edge: #e6dac6;
   --field: #f8f2e8;
@@ -35,7 +35,7 @@
   background-image:
     linear-gradient(90deg, var(--check) 50%, transparent 50%),
     linear-gradient(var(--check) 50%, transparent 50%);
-  background-size: 44px 44px;
+  background-size: 60px 60px;
   min-height: 100%;
 }
 * { box-sizing: border-box; }
@@ -50,7 +50,7 @@ p { margin: 0; }
 
 /* Menu board: the party itself. Double-ruled like a deli sign. */
 .board {
-  margin-top: 28px; padding: 22px 20px 20px; display: flex; flex-direction: column; align-items: flex-start; gap: 0;
+  position: relative; margin-top: 28px; padding: 22px 20px 20px; display: flex; flex-direction: column; align-items: flex-start; gap: 0;
   background: var(--paper); border: 3px solid var(--ink); border-radius: 6px;
   box-shadow: inset 0 0 0 5px var(--paper), inset 0 0 0 6px var(--ink), 4px 5px 0 var(--shadow);
 }
@@ -96,12 +96,14 @@ h2 { font-size: 1.35rem; line-height: 1.25; display: flex; align-items: center; 
   animation: stamp .45s cubic-bezier(.3, 1.6, .6, 1) both;
 }
 section:nth-of-type(2n) .h-emoji { transform: rotate(7deg); }
+/* The menu board's pizza stamp sits on its top-right corner */
+.board > .h-emoji { position: absolute; top: -20px; right: 18px; transform: rotate(10deg); }
 /* stamp stays first in the list so pointing at a section never replays the thump */
-section:hover .h-emoji, section:active .h-emoji { transform: rotate(-2deg) scale(1.12); animation: stamp .45s cubic-bezier(.3, 1.6, .6, 1) both, wobble .5s ease-in-out; }
+section:hover .h-emoji, section:active .h-emoji, .board:hover > .h-emoji, .board:active > .h-emoji { transform: rotate(-2deg) scale(1.12); animation: stamp .45s cubic-bezier(.3, 1.6, .6, 1) both, wobble .5s ease-in-out; }
 .note .h-emoji { width: 44px; height: 44px; font-size: 1.4rem; }
 @keyframes stamp { from { transform: scale(1.6) rotate(-20deg); opacity: 0; } }
 @keyframes wobble { 25% { rotate: -9deg; } 75% { rotate: 9deg; } }
-@media (prefers-reduced-motion: reduce) { .h-emoji, section:hover .h-emoji, section:active .h-emoji { animation: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) { .h-emoji, section:hover .h-emoji, section:active .h-emoji, .board:hover > .h-emoji, .board:active > .h-emoji { animation: none; transition: none; } }
 .empty { color: var(--muted); }
 
 /* Sticky note: full width like the tickets, a little crooked. Always yellow paper, even after dark. */

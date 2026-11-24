@@ -61,6 +61,9 @@ jobs:
           v="${GITHUB_SHA::8}"
           sed -i -E "s#(href|src)=\"(style\.css|app\.js|theme\.js)\"#\1=\"\2?v=$v\"#g" _site/index.html
           grep -q "style.css?v=$v" _site/index.html
+          # ...and on the files app.js imports, so a cached old lib.js never meets a new app.js
+          sed -i -E "s#\"\./(lib|pie|morph|config|config\.example)\.js\"#\"./\1.js?v=$v\"#g" _site/app.js
+          grep -q "lib.js?v=$v" _site/app.js && grep -q "config.js?v=$v" _site/app.js
 
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
