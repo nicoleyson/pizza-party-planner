@@ -157,7 +157,7 @@ function startParty(code) {
         const list = itemsIn(cat);
         if (!list.length) return "";
         return `<div class="cat"><h3>${label}</h3><ul class="list">${list
-          .map(([id, it]) => `<li><span>${esc(it.name)} <span class="who">— ${esc(it.by)}</span></span>${
+          .map(([id, it]) => `<li><span>${esc(it.name)}${it.amount ? `<span class="amt">${esc(it.amount)}</span>` : ""} <span class="who">— ${esc(it.by)}</span></span>${
             it.uid === uid ? `<button class="ghost" data-del-item="${id}" title="Remove">✕</button>` : ""
           }</li>`)
           .join("")}</ul></div>`;
@@ -223,8 +223,10 @@ function startParty(code) {
     const by = myName();
     const name = $("item-name").value.trim();
     if (!by || !name) return;
-    await store.add("items", { name, category: $("item-cat").value, by, uid, createdAt: Date.now() });
+    const amount = $("item-amount").value.trim();
+    await store.add("items", { name, category: $("item-cat").value, by, uid, createdAt: Date.now(), ...(amount && { amount }) });
     $("item-name").value = "";
+    $("item-amount").value = "";
     toast(`Thanks ${by}! ${name} added.`);
   });
 
