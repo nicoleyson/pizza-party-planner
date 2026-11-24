@@ -44,3 +44,26 @@ Until Firebase is set up, the site runs in **demo mode** with no sign-in (data s
 - **Invite-only (optional):** the host can tap 🔒 Guest list, add friends' Google emails, and switch on invite-only. Then nobody else can see or change the party, even with the link.
 - **Privacy:** other guests see your name and Google profile photo, never your email. The guest list is only readable by the host. As the Firebase project owner, the host can also see who signed in under Authentication → Users.
 - To clean up old parties: Firebase console → Realtime Database → `parties` → delete the ones you don't need.
+
+## Security checklist
+
+What's already handled for you:
+
+- **Database rules** ([`database.rules.json`](database.rules.json)): nobody can read or write without signing in with a verified Google account. Nobody can list parties, add themselves as a host, or store data under a party that doesn't exist. Everything people save is length-limited and checked.
+- **No keys in the repo:** `config.js` is gitignored, and the deploy builds it from repo secrets.
+- **Content Security Policy** (in `index.html`): the page only runs code from this site and Google's Firebase servers, and only connects to Firebase and Google sign-in. Anything people type is escaped before it's shown.
+- **No referrer:** invite codes never leak to other sites through links.
+
+Settings to check in Firebase and Google Cloud:
+
+1. **Sign-in providers** (Authentication → Sign-in method): only **Google** should be enabled. The rules ignore every other kind of account anyway.
+2. **Authorized domains** (Authentication → Settings): keep `localhost` (for local testing), `<project>.firebaseapp.com` (Google sign-in runs there) and your `<username>.github.io`. `<project>.web.app` is optional.
+3. **Lock the API key to your sites** (optional but recommended):
+   1. Open <https://console.cloud.google.com/apis/credentials>, signed in with the same Google account, and pick your Firebase project in the project picker at the top.
+   2. Under **API Keys**, click **Browser key (auto created by Firebase)**.
+   3. **Application restrictions** → **Websites**, then add:
+      - `https://<username>.github.io/*`
+      - `https://<project>.firebaseapp.com/*` (required, or Google sign-in breaks)
+      - `http://localhost:8765/*` (for local testing)
+   4. Click **Save**. It can take a few minutes to apply. Then sign in on the live site once to confirm it still works.
+4. **Spark plan:** stay on the free plan. If anyone ever floods the database, it pauses at the free limits instead of billing you.
