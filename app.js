@@ -6,6 +6,7 @@ const CATS = { sauce: "Sauces", cheese: "Cheeses", topping: "Toppings", other: "
 const EMOJI = { sauce: "🍅", cheese: "🧀", topping: "🍄", other: "🥖" };
 const PIZZA_CATS = ["sauce", "cheese", "topping"];
 const EATS_ALL = "eats everything 🍕";
+const CAT_ONE = { sauce: "Sauce", cheese: "Cheese", topping: "Topping", other: "Other" };
 
 const $ = (id) => document.getElementById(id);
 
@@ -137,6 +138,7 @@ function startParty(code) {
   let renaming = null; // pizza id being renamed inline
   let armed = null; // "item:<id>", "pizza:<id>" or "diet:<id>" waiting for a second tap to delete
   let armTimer;
+  let editingItem = null; // ingredient id being edited inline
 
   const itemsIn = (cat) =>
     Object.entries(state.items)
@@ -169,22 +171,44 @@ function startParty(code) {
     renderPizzas();
   }
 
+  // Inline editor for your own ingredient. Keeps what you've typed if the list re-renders.
+  function itemEditor(id, it, drafts) {
+    const v = drafts || it;
+    const opt = (val, label, cur) => `<option value="${val}" ${val === cur ? "selected" : ""}>${label}</option>`;
+    return `<li class="editing"><form class="item-edit" data-edit-form="${id}">
+      <select data-f="category" aria-label="Type">${Object.keys(CATS).map((c) => opt(c, `${EMOJI[c]} ${CAT_ONE[c]}`, v.category)).join("")}</select>
+      <input data-f="name" maxlength="60" required value="${esc(v.name)}" aria-label="Ingredient">
+      <input data-f="amount" maxlength="30" value="${esc(v.amount || "")}" placeholder="how much (optional)" aria-label="How much">
+      <select data-f="icon" aria-label="Pizza icon" ${v.category === "topping" ? "" : "hidden"}>${opt("", "✨ Auto", safeIcon(v.icon))}${ICONS.map(([e, l]) => opt(e, `${e} ${l}`, safeIcon(v.icon))).join("")}</select>
+      <div class="row edit-actions"><button>Save</button><button type="button" class="secondary" data-cancel-edit>Cancel</button></div>
+    </form></li>`;
+  }
+
   function renderItems() {
+    // Hold on to an open editor's unsaved values and focus across live updates
+    const form = document.querySelector("#items [data-edit-form]");
+    const field = (f) => form?.querySelector(`[data-f="${f}"]`)?.value;
+    const drafts = form ? { category: field("category"), name: field("name"), amount: field("amount"), icon: field("icon") } : null;
+    const focused = form?.contains(document.activeElement) ? document.activeElement.dataset.f : null;
     const html = Object.entries(CATS)
       .map(([cat, label]) => {
         const list = itemsIn(cat);
         if (!list.length) return "";
         return `<div class="cat cat-${cat}"><h3><span class="emo">${EMOJI[cat]}</span>${label}</h3><ul class="list">${list
           .map(([id, it]) => {
+            if (id === editingItem && it.uid === uid) return itemEditor(id, it, drafts);
             const icon = iconOf(it);
             return `<li><span>${icon ? `<span class="item-icon">${icon}</span>` : ""}<span class="item-name">${esc(it.name)}</span>${
               it.amount ? `<span class="amt">${esc(it.amount)}</span>` : ""
-            }<span class="who">from ${esc(it.by)}</span></span>${it.uid === uid ? delBtn("item", id) : ""}</li>`;
+            }<span class="who">from ${esc(it.by)}</span></span>${
+              it.uid === uid ? `<span class="mine"><button class="ghost" data-edit-item="${id}" title="Edit">✏️</button>${delBtn("item", id)}</span>` : ""
+            }</li>`;
           })
           .join("")}</ul></div>`;
       })
       .join("");
     $("items").innerHTML = html || `<p class="empty">The table is empty… be the first to bring something! 🥺</p>`;
+    if (focused) document.querySelector(`#items [data-edit-form] [data-f="${focused}"]`)?.focus();
   }
 
   function renderDiets() {
@@ -334,6 +358,30 @@ function startParty(code) {
   });
 
   document.addEventListener("submit", async (e) => {
+    const ef = e.target.closest("[data-edit-form]");
+    if (!ef) return;
+    e.preventDefault();
+    const id = ef.dataset.editForm;
+    const it = state.items[id];
+    const get = (f) => ef.querySelector(`[data-f="${f}"]`).value.trim();
+    const name = get("name").slice(0, 60);
+    const category = get("category");
+    if (!it || it.uid !== uid || !name || !CATS[category]) return;
+    const amount = get("amount").slice(0, 30);
+    const icon = category === "topping" ? safeIcon(get("icon")) : "";
+    editingItem = null;
+    await store.set(`items/${id}`, { name, category, by: it.by, uid: it.uid, createdAt: it.createdAt || Date.now(), ...(amount && { amount }), ...(icon && { icon }) });
+    toast(`${name} updated ✨`);
+  });
+
+  // Show the icon picker only while "Topping" is chosen in an open editor
+  document.addEventListener("change", (e) => {
+    if (e.target.dataset?.f !== "category") return;
+    const icon = e.target.form?.querySelector('[data-f="icon"]');
+    if (icon) icon.hidden = e.target.value !== "topping";
+  });
+
+  document.addEventListener("submit", async (e) => {
     const f = e.target.closest("[data-rename-form]");
     if (!f) return;
     e.preventDefault();
@@ -358,6 +406,13 @@ function startParty(code) {
       const input = document.querySelector("#pizzas .rename input");
       input?.focus();
       input?.select();
+    } else if (b.dataset.editItem) {
+      editingItem = b.dataset.editItem;
+      renderItems();
+      document.querySelector('#items [data-f="category"]')?.focus();
+    } else if ("cancelEdit" in b.dataset) {
+      editingItem = null;
+      renderItems();
     } else if ("cancelRename" in b.dataset) {
       renaming = null;
       renderPizzas();

@@ -262,6 +262,16 @@ ul.list li:hover { border-color: var(--dot); transform: translateX(3px); }
 .diets li.empty { display: block; background: none; border: 2.5px dashed var(--line); text-align: center; }
 .diets li.empty:hover { transform: none; }
 .diet-note { margin-left: var(--s2); }
+.mine { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+
+/* editing an ingredient in place */
+ul.list li.editing { display: block; padding: var(--s2); border-color: var(--dot); }
+ul.list li.editing:hover { transform: none; }
+.item-edit { display: grid; grid-template-columns: 150px 1fr 170px; gap: 8px; }
+.item-edit > * { min-width: 0; width: 100%; }
+.item-edit [data-f="icon"] { grid-column: 1; }
+.item-edit .edit-actions { grid-column: 2 / -1; justify-content: flex-end; }
+.item-edit .edit-actions button { padding: 7px 16px; }
 .diet-note.any { color: var(--muted); font-weight: 700; }
 .diet-form #diet-note { flex: 1; min-width: 0; }
 .foot { text-align: center; color: var(--muted); font-weight: 800; font-size: .85rem; padding: 8px 0 40px; }
@@ -290,4 +300,10 @@ ul.list li:hover { border-color: var(--dot); transform: translateX(3px); }
   .pizza .voters { grid-area: voters; }
   .pizza .vote { grid-area: vote; min-width: 48px; padding: 6px 8px; }
   .diet-form #diet-note { flex-basis: 100%; }
+  .item-edit { grid-template-columns: 1fr 1fr; grid-template-areas: "name name" "cat icon" "amt amt" "act act"; }
+  .item-edit [data-f="name"] { grid-area: name; }
+  .item-edit [data-f="category"] { grid-area: cat; }
+  .item-edit [data-f="icon"] { grid-area: icon; }
+  .item-edit [data-f="amount"] { grid-area: amt; }
+  .item-edit .edit-actions { grid-area: act; }
 }
