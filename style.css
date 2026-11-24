@@ -192,7 +192,8 @@ button.secondary:hover { background: var(--cheese-soft); }
 .rename { display: flex; gap: var(--s1); align-items: center; flex-wrap: wrap; margin-bottom: var(--s1); }
 .rename input { flex: 1; min-width: 140px; font-family: var(--display); font-size: 1.05rem; padding: 6px 10px; }
 .rename button { padding: 6px 14px; }
-button.ghost.danger { color: #fff; background: var(--tomato); border: 2px solid var(--ink); border-radius: 999px; padding: 2px 10px; font-size: .8rem; font-weight: 800; transform: none; }
+button.ghost.danger { font-family: "Nunito", ui-rounded, system-ui, sans-serif; color: #fff; background: var(--tomato-dark); border: 2px solid var(--ink); border-radius: 999px; padding: 3px 12px; font-size: .85rem; font-weight: 800; letter-spacing: .01em; white-space: nowrap; transform: none; }
+button.ghost.danger:hover { color: #fff; transform: none; }
 .item-icon, .emo { display: inline-block; margin-right: .45em; }
 
 /* ingredient groups, color-coded */
