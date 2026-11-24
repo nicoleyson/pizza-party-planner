@@ -203,6 +203,17 @@ test("cohosts: the host picks them, and they can run the party's settings", { sk
   await denied(get(`${P}/guests`, cohost), "and the guest list is private again");
 });
 
+test("cohosts can reopen a finished party, and invite-only hides who's cohosting", { skip }, async () => {
+  const P = "parties/cohostover-abc12";
+  const ended = datedMeta(Date.now() - DAY);
+  await allowed(put(P, { meta: { ...ended, guestOnly: true }, guests: { "cohost@gmail,com": "cohost@gmail.com" }, people: { [cohost.uid]: { name: "Cohost", joinedAt: 1 } } }, "admin"), "seed an ended, invite-only party");
+  await allowed(put(`${P}/cohosts/${cohost.uid}`, true, host), "the host can still pick cohosts after the party");
+  await denied(get(`${P}/cohosts`, stranger), "a stranger can't see who's cohosting");
+  await denied(put(`${P}/items/late`, item(cohost), cohost), "it's over, so even a cohost can't bring things");
+  await allowed(put(`${P}/meta`, { ...ended, guestOnly: true, date: "2030-04-04", endsAt: Date.now() + DAY }, cohost), "the cohost moves the date later");
+  await allowed(put(`${P}/items/back`, item(cohost), cohost), "and the party is open again");
+});
+
 test("creating parties: hosts only, with or without a date", { skip }, async () => {
   const meta = { title: "New", details: "", uid: host.uid, createdAt: Date.now() };
   await allowed(put("parties/newparty-abc12345/meta", meta, host), "host creates a party");

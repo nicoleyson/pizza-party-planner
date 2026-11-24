@@ -92,6 +92,14 @@ npm run test:rules
 
 It checks that parties made before party dates work as before, that a party locks after its date and the host can reopen it, that nobody can change someone else's things, and that invite-only parties stay private. Run it after any change to `database.rules.json`, before publishing the rules.
 
+To click through the page itself, the way a guest, the host and a cohost would, run:
+
+```bash
+npm run test:e2e
+```
+
+It opens the site in a hidden Chrome window in demo mode, so it never signs in or touches real parties. It brings ingredients, builds a pizza, votes and checks the cut line moves, picks a cohost, checks a finished party is read-only until the host reopens it, and loads a party saved by an older version. It needs Google Chrome and takes a few seconds. Run it before pushing changes to the page.
+
 ### 3. Publish on GitHub Pages
 
 1. Push this folder to a GitHub repo.
@@ -162,7 +170,7 @@ Worth checking in Firebase and Google Cloud:
 | `morph.js` | Updates lists in place when friends change things, so the page doesn't jump or lose what you're typing |
 | `config.example.js` | Template for your `config.js` (Firebase settings) |
 | `database.rules.json` | Firebase security rules: paste these into the Rules tab |
-| `tests/` | `npm test`: helpers, drawings, and checks that the rules stay strict. `npm run test:rules`: the rules against the Firebase emulator |
+| `tests/` | `npm test`: helpers, drawings, and checks that the rules stay strict. `npm run test:rules`: the rules against the Firebase emulator. `npm run test:e2e`: the page itself, in a hidden Chrome |
 | `firebase.json` | Only tells the emulator where the rules are (`npm run test:rules`) |
 | `.github/workflows/pages.yml` | Tests, builds `config.js` from secrets, and deploys |
 | `docs/screenshots/` | The pictures in this README (not part of the site) |
