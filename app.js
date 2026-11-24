@@ -9,8 +9,13 @@ const CAT_ONE = { sauce: "Sauce", cheese: "Cheese", topping: "Topping", other: "
 
 const $ = (id) => document.getElementById(id);
 
-// ── Who am I (no accounts: a random id + name saved in this browser) ──
-const uid = localStorage.uid || (localStorage.uid = crypto.randomUUID());
+// ── Who am I ──
+// With Firebase sign-in set up, every browser quietly gets an anonymous account
+// (no email, no password) that the database can trust. People can optionally
+// link Google to use the same identity on other devices.
+// Without sign-in (demo mode or no apiKey yet) we fall back to a random id kept in this browser.
+let uid = localStorage.uid || (localStorage.uid = crypto.randomUUID());
+let account = null; // { auth, au, user } when Firebase sign-in is active
 
 // ── Which party: the secret code lives after the # in the invite link ──
 // It's never sent to GitHub's servers and never stored in the repo.
@@ -25,10 +30,28 @@ if (!configured) {
 const db = configured ? await firebaseDb() : localDb();
 
 async function firebaseDb() {
-  const v = "10.12.2";
-  const { initializeApp } = await import(`https://www.gstatic.com/firebasejs/${v}/firebase-app.js`);
-  const fb = await import(`https://www.gstatic.com/firebasejs/${v}/firebase-database.js`);
-  const d = fb.getDatabase(initializeApp(firebaseConfig));
+  const base = "https://www.gstatic.com/firebasejs/10.12.2";
+  const { initializeApp } = await import(`${base}/firebase-app.js`);
+  const fb = await import(`${base}/firebase-database.js`);
+  const app = initializeApp(firebaseConfig);
+  if (firebaseConfig.apiKey) {
+    const au = await import(`${base}/firebase-auth.js`);
+    const auth = au.getAuth(app);
+    try {
+      const user = await new Promise((resolve, reject) => {
+        const stop = au.onAuthStateChanged(auth, (u) => {
+          if (u) { stop(); resolve(u); } else au.signInAnonymously(auth).catch(reject);
+        });
+      });
+      account = { auth, au, user };
+      uid = user.uid;
+    } catch (err) {
+      console.error(err);
+      $("mode").hidden = false;
+      $("mode").textContent = "Couldn't sign in to the database, so changes won't save. Try reloading.";
+    }
+  }
+  const d = fb.getDatabase(app);
   return {
     watch: (p, cb) => fb.onValue(fb.ref(d, p), (s) => cb(s.val() || {}), (err) => toast("Couldn't load: " + err.message)),
     add: (p, obj) => fb.push(fb.ref(d, p), obj),
@@ -126,6 +149,47 @@ function startParty(code) {
     try { await navigator.clipboard.writeText(link); toast("Invite link copied. Only share it with friends!"); }
     catch { prompt("Copy this invite link:", link); }
   });
+  // Optional Google sign-in, so your stuff stays editable from your other devices
+  function renderAccount() {
+    const el = $("account");
+    if (!account) return;
+    el.hidden = false;
+    const u = account.auth.currentUser;
+    const google = u?.providerData.find((p) => p.providerId === "google.com");
+    el.innerHTML = google
+      ? `Signed in as ${esc(google.email || google.displayName || "you")} · <button type="button" class="link" id="google-out">sign out</button>`
+      : `<button type="button" class="link" id="google-in">Sign in with Google</button> to edit your stuff from other devices <span class="opt">(optional)</span>`;
+  }
+  renderAccount();
+  if (account && !localStorage.myName && account.user.displayName) {
+    nameInput.value = localStorage.myName = account.user.displayName.split(" ")[0];
+  }
+  $("account").addEventListener("click", async (e) => {
+    const { auth, au } = account || {};
+    if (e.target.id === "google-in") {
+      const provider = new au.GoogleAuthProvider();
+      try {
+        // Upgrades this browser's anonymous account, so everything you've added stays yours
+        await au.linkWithPopup(auth.currentUser, provider);
+        toast("Signed in! Your stuff is now editable from any device 🎉");
+        renderAccount();
+      } catch (err) {
+        if (err.code === "auth/credential-already-in-use") {
+          // This Google account was already used on another device: switch to it.
+          await au.signInWithCredential(auth, au.GoogleAuthProvider.credentialFromError(err));
+          toast("Welcome back! Anything you added here before signing in stays locked to this device.");
+          setTimeout(() => location.reload(), 2500);
+        } else if (!["auth/popup-closed-by-user", "auth/cancelled-popup-request"].includes(err.code)) {
+          console.error(err);
+          toast("Google sign-in didn't work. Try again?");
+        }
+      }
+    } else if (e.target.id === "google-out") {
+      await au.signOut(auth);
+      location.reload(); // comes back as a fresh anonymous visitor
+    }
+  });
+
   $("leave").addEventListener("click", (e) => {
     e.preventDefault();
     localStorage.removeItem("lastParty");

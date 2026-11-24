@@ -95,6 +95,10 @@ header .row.wrap { justify-content: center; }
   text-decoration: none; padding: 3px 10px; border-radius: 999px; border: 2px solid var(--line); background: #fff;
 }
 .leave:hover { color: var(--tomato); border-color: var(--tomato); }
+.account { margin: 12px 0 0; font-size: .85rem; font-weight: 700; color: var(--muted); }
+.account .opt { font-weight: 600; }
+button.link { background: none; border: 0; box-shadow: none; padding: 0; color: var(--tomato); font-weight: 800; text-decoration: underline; text-underline-offset: 3px; border-radius: 0; }
+button.link:hover { transform: none; box-shadow: none; color: var(--tomato-dark); }
 .mode {
   max-width: 724px; margin: 72px auto -84px; background: var(--cheese-soft); border: 2px dashed var(--ink);
   padding: 8px 14px; border-radius: 14px; font-size: .9rem; font-weight: 700; position: relative;

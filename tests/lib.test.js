@@ -67,3 +67,17 @@ test("database rules allow every kind of thing the app saves, and nothing else",
   assert.equal(rules.rules.parties[".read"], false, "nobody should be able to list all parties");
   assert.match(party.diets.$id.note[".validate"], /<= 80/); // matches the input's maxlength
 });
+
+test("every write rule requires a signed-in user", () => {
+  const rules = JSON.parse(readFileSync(new URL("../database.rules.json", import.meta.url), "utf8"));
+  const writes = [];
+  const walk = (node, path) => {
+    for (const [k, v] of Object.entries(node)) {
+      if (k === ".write") writes.push([path, v]);
+      else if (v && typeof v === "object") walk(v, `${path}/${k}`);
+    }
+  };
+  walk(rules.rules, "");
+  assert.ok(writes.length > 5);
+  for (const [path, rule] of writes) assert.ok(rule === false || rule.includes("auth != null"), `${path} allows writes without sign-in`);
+});
