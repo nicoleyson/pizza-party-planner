@@ -50,10 +50,10 @@
       <input id="meta-details" maxlength="200" aria-label="When / where" placeholder="When / where (optional)">
       <div class="row"><button>Save</button><button type="button" class="secondary" id="meta-cancel">Cancel</button></div>
     </form>
-    <div class="row wrap">
+    <a href="#" id="leave" class="leave">↩ other party</a>
+    <div class="row wrap header-row">
       <label class="me">Your name <input id="my-name" maxlength="40" placeholder="e.g. Sam" autocomplete="given-name"></label>
       <button class="secondary" id="copy-link">🔗 Copy invite link</button>
-      <a href="#" id="leave" class="leave">other party</a>
     </div>
   </header>
 
@@ -63,10 +63,10 @@
       <form id="item-form" class="item-form">
         <label>Type
           <select id="item-cat">
-            <option value="sauce">🍅 Sauce</option>
-            <option value="cheese">🧀 Cheese</option>
-            <option value="topping" selected>🍄 Topping</option>
-            <option value="other">🥖 Other</option>
+            <option value="sauce">🍅 Sauce</option>
+            <option value="cheese">🧀 Cheese</option>
+            <option value="topping" selected>🍄 Topping</option>
+            <option value="other">🥖 Other</option>
           </select>
         </label>
         <label>Ingredient
@@ -76,11 +76,11 @@
           <input id="item-amount" maxlength="30" placeholder="e.g. 2 cups">
         </label>
         <label class="f-icon"><span>Pizza icon <span class="opt">(optional)</span></span>
-          <select id="item-icon"><option value="">✨ Auto</option></select>
+          <select id="item-icon"><option value="">✨ Auto</option></select>
         </label>
         <button>Add ＋</button>
       </form>
-      <p class="hint">Both optional. Any unit is fine (2 cups, 1 jar, a handful, lots 🤷). Pick an icon if the topping looks wrong on the pizza drawings.</p>
+      <p class="hint">Amounts can be in any unit (2 cups, a handful, lots 🤷). Icons are only needed if a topping looks off on the pizza drawings.</p>
       <div id="items"></div>
     </section>
 

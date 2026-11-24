@@ -176,7 +176,7 @@ function startParty(code) {
       .map(([cat, label]) => {
         const list = itemsIn(cat);
         if (!list.length) return "";
-        return `<div class="cat"><h3>${EMOJI[cat]} ${label}</h3><ul class="list">${list
+        return `<div class="cat"><h3><span class="emo">${EMOJI[cat]}</span>${label}</h3><ul class="list">${list
           .map(([id, it]) => {
             const icon = iconOf(it);
             return `<li><span>${icon ? `<span class="item-icon">${icon}</span>` : ""}<span class="item-name">${esc(it.name)}</span>${
@@ -194,12 +194,12 @@ function startParty(code) {
     const checked = new Set([...el.querySelectorAll("input:checked")].map((i) => i.value));
     el.innerHTML = PIZZA_CATS.map((cat) => {
       const list = itemsIn(cat);
-      return `<div class="cat"><h3>${EMOJI[cat]} ${CATS[cat]}</h3>${
+      return `<div class="cat"><h3><span class="emo">${EMOJI[cat]}</span>${CATS[cat]}</h3>${
         list.length
           ? `<div class="chips">${list
               .map(([id, it]) => {
                 const icon = iconOf(it);
-                return `<label class="chip"><input type="checkbox" value="${id}" ${checked.has(id) ? "checked" : ""}><span>${icon ? icon + " " : ""}${esc(it.name)}</span></label>`;
+                return `<label class="chip"><input type="checkbox" value="${id}" ${checked.has(id) ? "checked" : ""}><span>${icon ? `<span class="emo">${icon}</span>` : ""}${esc(it.name)}</span></label>`;
               })
               .join("")}</div>`
           : `<p class="empty">No ${CATS[cat].toLowerCase()} committed yet.</p>`
@@ -228,7 +228,7 @@ function startParty(code) {
                 const it = state.items[iid];
                 if (!it) return `<span class="ing gone" title="no longer on the list">removed</span>`;
                 const icon = iconOf(it);
-                return `<span class="ing" title="from ${esc(it.by)}">${icon ? icon + " " : ""}${esc(it.name)}</span>`;
+                return `<span class="ing" title="from ${esc(it.by)}">${icon ? `<span class="emo">${icon}</span>` : ""}${esc(it.name)}</span>`;
               })
               .join("");
             const pieItems = (p.ingredients || []).map((iid) => state.items[iid]).filter(Boolean);
