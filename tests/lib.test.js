@@ -231,9 +231,23 @@ test("sauces and cheeses get a sensible icon when nobody picked one", async () =
   assert.equal(guessIcon("Red", "sauce"), "🍅");
   assert.equal(guessIcon("Basil pesto", "sauce"), "🌿");
   assert.equal(guessIcon("Cotija", "cheese"), "🧀");
-  assert.equal(guessIcon("Pepperoni", "topping"), "", "toppings keep their color dots unless someone picks an icon");
+  assert.equal(guessIcon("Paper plates", "topping"), "", "no known word in the name: the list shows ✨");
+  assert.equal(safeIcon(guessIcon("Granny Smith apples", "topping")), "🍎");
   assert.equal(safeIcon("🇲🇽"), "🇲🇽");
   for (const [e] of ICONS) assert.ok(e.length <= 8, `${e} must fit the database's 8-character icon limit`);
+});
+
+test("toppings and extras get an icon from the picker's words when nobody picked one", async () => {
+  const { guessIcon } = await import("../pie.js");
+  const cases = {
+    "Granny Smith apples": "🍎", "Green apples": "🍏", "Pineapple": "🍍", "Mushrooms": "🍄",
+    "Cherries": "🍒", "Sweet potato": "🍠", "Potatoes": "🥔", "Jalapeños": "🌶️", "Fried eggs": "🍳",
+    "Canadian bacon": "🥓", "Mexican chorizo": "🇲🇽", "Red onion": "🧅", "Hot honey": "🍯",
+    "Watermelon": "🍉", "Paper plates": "", "Pepperoni": "🔴", "Spicy pepperoni": "🔴",
+    "Fresh herbs": "🌿", "Herb mix": "🌿", "Parsley": "🌿", "Rosemary": "🌿", "Chives": "🌿", "Italian sausage": "🌭",
+  };
+  for (const [name, icon] of Object.entries(cases)) assert.equal(guessIcon(name, "topping"), icon, name);
+  assert.equal(guessIcon("Sparkling water", "other"), "💧");
 });
 
 test("the host's pizza goal is a whole number from 1 to 50, or not set", async () => {

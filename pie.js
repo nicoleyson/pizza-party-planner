@@ -146,18 +146,41 @@ const ICON_SET = new Set(ICONS.map(([e]) => e));
 // Only draw icons from our list, so nothing odd from the database ends up on the page.
 export const safeIcon = (s) => (ICON_SET.has(s) ? s : "");
 
-// A label icon for sauces and cheeses nobody picked one for: "Garlic" gets 🧄, not 🍅.
+// A label icon for ingredients nobody picked one for: "Garlic" sauce gets 🧄, not 🍅.
 // (Only used in lists and chips; the pie drawing colors sauce and cheese instead.)
 const SAUCE_ICONS = [
   [/garlic|aioli/, "🧄"], [/pesto|basil|herb|chimichurri|green/, "🌿"], [/bbq|barbe/, "🍖"],
   [/buffalo|hot|chil|spic|sriracha|harissa|diavol|arrabb/, "🌶️"], [/cream|alfredo|white|bechamel|ranch/, "🥛"],
   [/honey/, "🍯"], [/olive oil|oil/, "🫒"], [/mushroom|truffle/, "🍄"],
 ];
+// For toppings and extras, match the name against the words in the emoji picker:
+// "Granny Smith apples" gets 🍎, "Sparkling water" 💧. The longest match wins, so
+// "green apples" gets 🍏 and "sweet potato" 🍠, and any food beats a flag ("Canadian
+// bacon" is 🥓, "Mexican chorizo" 🇲🇽). Fun and color icons are left out
+// ("red onion" shouldn't be 🔴), and so are words too vague to guess from.
+const VAGUE = new Set(["can", "jar", "spread", "pie", "hot", "spicy", "meat"]);
+const plural = (w) => (w.endsWith("y") ? `${w.slice(0, -1)}(?:y|ies)` : `${w}(?:s|es)?`);
+// Extra words the picker doesn't list, for guessing only: pepperoni looks like red circles.
+const MORE_WORDS = [
+  ["🔴", "pepperoni"],
+  ["🌿", "herb / parsley / thyme / rosemary / cilantro / coriander / dill / mint / sage / chives / tarragon"],
+];
+const WORD_ICONS = ICON_GROUPS.filter(([g]) => g !== "Fun" && g !== "Colors")
+  .flatMap(([g, list]) => list.map((x) => [g === "Flags" ? 0 : 1000, ...x]))
+  .concat(MORE_WORDS.map((x) => [1000, ...x]))
+  .flatMap(([rank, e, label]) => label.split(" / ").map((w) => norm(w)).filter((w) => !VAGUE.has(w)).map((w) => [rank, e, w]))
+  .map(([rank, e, w]) => [e, rank + w.length, new RegExp(`\\b${w.split(" ").map((x, i, a) => (i === a.length - 1 ? plural(x) : x)).join(" ")}\\b`)]);
+function wordIcon(n) {
+  let best = null;
+  for (const m of WORD_ICONS) if ((!best || m[1] > best[1]) && m[2].test(n)) best = m;
+  return best?.[0] ?? "";
+}
+
 export function guessIcon(name, category) {
   const n = norm(name);
   if (category === "sauce") return SAUCE_ICONS.find(([re]) => re.test(n))?.[1] ?? "🍅";
   if (category === "cheese") return "🧀";
-  return "";
+  return wordIcon(n);
 }
 
 // Dots on a sunflower spiral so they spread evenly for any count.
