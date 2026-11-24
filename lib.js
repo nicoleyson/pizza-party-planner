@@ -60,6 +60,36 @@ export function groupItems(entries) {
   return [...groups.values()];
 }
 
+// An ingredient's earlier names (saved when its bringer renames it), newest first.
+export const MAX_AKA = 5;
+export const akaOf = (it) =>
+  Object.values(it?.aka || {}).filter((n) => typeof n === "string" && n.trim()).slice(0, MAX_AKA);
+
+// The earlier names to save when an ingredient goes from it.name to `name`.
+// Going back to an old name drops it from the list; spelling-only changes add nothing.
+export function nextAka(it, name) {
+  const now = ingredientKey(name);
+  const seen = new Set([now]);
+  return [it.name, ...akaOf(it)]
+    .map((n) => String(n).trim().slice(0, 60))
+    .filter((n) => { const k = ingredientKey(n); return k && !seen.has(k) && seen.add(k); })
+    .slice(0, MAX_AKA);
+}
+
+// Pizzas remember their toppings by name. Look a name up here to find who's bringing it:
+// a current name wins; otherwise an earlier name finds the renamed ingredient
+// ("Smoked turkey" still finds what's now "Roasted turkey").
+export function ingredientIndex(groups) {
+  const index = new Map(groups.map((g) => [g.key, g]));
+  for (const g of groups)
+    for (const [, it] of g.entries)
+      for (const old of akaOf(it)) {
+        const k = ingredientKey(old);
+        if (k && !index.has(k)) index.set(k, g);
+      }
+  return index;
+}
+
 // "2 cups" + "1 cup" + "lots" (Nicole) -> "3 cups + lots (Nicole)".
 // Only says something when at least two amounts in the same unit add up; otherwise "".
 const NUM = /^(\d+)\/(\d+)|^(\d+(?:\.\d+)?)(?:\s+(\d+)\/(\d+))?/;

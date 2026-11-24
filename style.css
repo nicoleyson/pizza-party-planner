@@ -409,6 +409,11 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .swatch input:checked + span { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 .swatch input:focus-visible + span { outline: 3px solid var(--basil); outline-offset: 2px; }
 .look-editor > button { justify-self: start; min-height: 38px; }
+.toppings-editor { margin-top: 10px; padding: 10px; background: var(--field); border-radius: 8px; display: grid; gap: 10px; }
+.toppings-editor h4 { margin: 0; font-size: .9rem; display: flex; align-items: center; gap: 6px; }
+.toppings-editor .chip.gone > span { text-decoration: line-through; color: var(--muted); }
+.toppings-editor .chip.gone input:checked + span { color: var(--paper); }
+.toppings-note { margin: 0; font-size: .9rem; color: var(--muted); }
 
 /* The pie drawing (pie.js). --size sets everything. */
 .pie {

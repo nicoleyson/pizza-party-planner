@@ -265,3 +265,33 @@ test("cohostIds keeps only plain ids set to true", () => {
   assert.deepEqual(cohostIds({ abc123: true, "bad id": true, nope: "yes", off: false, "<x>": true }), ["abc123"]);
   assert.deepEqual(cohostIds(null), []);
 });
+
+test("a pizza's topping still finds an ingredient after it's renamed", async () => {
+  const { groupItems, ingredientIndex, nextAka, ingredientKey } = await import("../lib.js");
+  const turkey = { name: "Smoked turkey", category: "topping", by: "Nicole", uid: "u1" };
+  const renamed = { ...turkey, name: "Roasted turkey", aka: nextAka(turkey, "Roasted turkey") };
+  assert.deepEqual(renamed.aka, ["Smoked turkey"]);
+  const index = ingredientIndex(groupItems([["t1", renamed]]));
+  assert.equal(index.get(ingredientKey("Smoked turkey"))?.name, "Roasted turkey");
+  assert.equal(index.get(ingredientKey("Roasted turkey"))?.name, "Roasted turkey");
+});
+
+test("someone still bringing the old name keeps it", async () => {
+  const { groupItems, ingredientIndex, ingredientKey } = await import("../lib.js");
+  const index = ingredientIndex(groupItems([
+    ["t1", { name: "Roasted turkey", category: "topping", by: "Nicole", uid: "u1", aka: ["Smoked turkey"] }],
+    ["t2", { name: "Smoked turkey", category: "topping", by: "Sam", uid: "u2" }],
+  ]));
+  assert.equal(index.get(ingredientKey("smoked turkey")).entries[0][0], "t2");
+});
+
+test("nextAka keeps old names newest first, drops the new name and spelling-only changes", async () => {
+  const { nextAka } = await import("../lib.js");
+  assert.deepEqual(nextAka({ name: "Roasted turkey", aka: ["Smoked turkey"] }, "Grilled turkey"), ["Roasted turkey", "Smoked turkey"]);
+  assert.deepEqual(nextAka({ name: "Roasted turkey", aka: ["Smoked turkey"] }, "smoked turkey!"), ["Roasted turkey"]);
+  assert.deepEqual(nextAka({ name: "Basil" }, "basil "), []);
+  const many = nextAka({ name: "f", aka: ["a", "b", "c", "d", "e"] }, "g");
+  assert.deepEqual(many, ["f", "a", "b", "c", "d"]);
+  // Firebase can hand arrays back as objects
+  assert.deepEqual(nextAka({ name: "B", aka: { 0: "A" } }, "C"), ["B", "A"]);
+});

@@ -249,3 +249,23 @@ test("only verified Google accounts get in", { skip }, async () => {
   await denied(get(`parties/${OLD}/items`, null), "signed-out reads");
   await denied(get("parties", guest), "nobody can list every party");
 });
+
+test("renamed ingredients keep their old names, and the host fixes any pizza's toppings", { skip }, async () => {
+  const P = "parties/toppingparty-abc1";
+  await allowed(put(P, {
+    meta: oldMeta,
+    cohosts: { [cohost.uid]: true },
+    people: { [cohost.uid]: { name: "Cohost", joinedAt: 1 } },
+    pizzas: { gp: { name: "Turkey time", by: "Guest", uid: guest.uid, createdAt: 1, picks: ["Smoked turkey"], votes: { [guest.uid]: "Guest", [host.uid]: "Host" } } },
+  }, "admin"), "seed");
+  await allowed(put(`${P}/items/t1`, item(guest, { name: "Roasted turkey", category: "topping", aka: ["Smoked turkey"] }), guest), "rename, keeping the old name");
+  await denied(put(`${P}/items/t2`, item(guest, { aka: "Smoked turkey" }), guest), "old names as text");
+  await denied(put(`${P}/items/t3`, item(guest, { aka: ["a", "b", "c", "d", "e", "f"] }), guest), "more than five old names");
+  await denied(put(`${P}/items/t4`, item(guest, { aka: ["x".repeat(61)] }), guest), "old name too long");
+  await allowed(put(`${P}/pizzas/gp/picks`, ["Roasted turkey", "Basil"], host), "the host changes a guest's toppings");
+  await allowed(put(`${P}/pizzas/gp/picks`, ["Roasted turkey"], cohost), "so can a cohost");
+  await allowed(put(`${P}/pizzas/gp/picks`, ["Roasted turkey", "Garlic"], guest), "and whoever proposed it");
+  await denied(put(`${P}/pizzas/gp/picks`, ["Anchovies"], stranger), "nobody else");
+  await denied(put(`${P}/pizzas/gp/picks`, "Anchovies", host), "toppings as text");
+  await denied(put(`${P}/pizzas/nope/picks`, ["Basil"], host), "a pizza that doesn't exist");
+});
