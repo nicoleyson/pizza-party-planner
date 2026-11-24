@@ -95,3 +95,31 @@ test("only Google-signed-in people get in, and only the host sees the guest list
   assert.deepEqual(stored.sort(), ["joinedAt", "name", "photo"], "the who's-coming list must only store name + photo");
   assert.equal(party.people.$uid.$other[".validate"], false);
 });
+
+test("ingredientKey treats small spelling differences as the same ingredient", async () => {
+  const { ingredientKey } = await import("../lib.js");
+  assert.equal(ingredientKey("  Pepperoni "), ingredientKey("pepperoni"));
+  assert.equal(ingredientKey("Jalapeño"), ingredientKey("jalapeno"));
+  assert.equal(ingredientKey("Hot-honey!"), ingredientKey("hot honey"));
+  assert.notEqual(ingredientKey("Basil"), ingredientKey("Basil pesto"));
+});
+
+test("groupItems merges duplicates and keeps everyone who's bringing it", async () => {
+  const { groupItems } = await import("../lib.js");
+  const groups = groupItems([
+    ["a", { name: "Pepperoni", category: "topping", by: "Sam" }],
+    ["b", { name: "Basil", category: "topping", by: "Alex" }],
+    ["c", { name: "pepperoni ", category: "topping", by: "Alex", icon: "🌶️" }],
+  ]);
+  assert.equal(groups.length, 2);
+  const pep = groups.find((g) => g.name === "Pepperoni");
+  assert.deepEqual(pep.entries.map(([id]) => id), ["a", "c"]);
+  assert.equal(pep.icon, "🌶️"); // the first icon anyone picked
+});
+
+test("pizzas can store ingredient names (picks), kept short", () => {
+  const rules = JSON.parse(readFileSync(new URL("../database.rules.json", import.meta.url), "utf8"));
+  const pz = rules.rules.parties.$party.pizzas.$id;
+  assert.match(pz.picks.$i[".validate"], /isString\(\)/);
+  assert.match(pz.picks.$i[".validate"], /<= 60/); // matches the ingredient input's maxlength
+});

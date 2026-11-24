@@ -32,3 +32,26 @@ export const voteCount = (p) => Object.keys(p?.votes || {}).length;
 // Most votes first; ties go to whichever was proposed first.
 export const rankPizzas = (pizzas) =>
   Object.entries(pizzas || {}).sort((a, b) => voteCount(b[1]) - voteCount(a[1]) || (a[1].createdAt || 0) - (b[1].createdAt || 0));
+
+// "Pepperoni", "pepperoni " and "PEPPERONI!" are the same ingredient.
+export const ingredientKey = (name) =>
+  String(name || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+// Merge ingredients that several people are bringing into one group each.
+// entries: [[id, item], ...] -> [{ key, name, category, icon, entries }]
+export function groupItems(entries) {
+  const groups = new Map();
+  for (const [id, it] of entries) {
+    const key = ingredientKey(it.name) || id;
+    if (!groups.has(key)) groups.set(key, { key, name: it.name.trim(), category: it.category, icon: "", entries: [] });
+    const g = groups.get(key);
+    g.entries.push([id, it]);
+    if (!g.icon && it.icon) g.icon = it.icon;
+  }
+  return [...groups.values()];
+}

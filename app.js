@@ -1,6 +1,6 @@
 import { firebaseConfig } from "./config.js";
 import { pieHTML, ICONS, safeIcon, SAUCE_LOOKS, CHEESE_LOOKS } from "./pie.js";
-import { parseCode, newCode, esc, cleanIds, voteCount, rankPizzas } from "./lib.js";
+import { parseCode, newCode, esc, cleanIds, voteCount, rankPizzas, groupItems, ingredientKey } from "./lib.js";
 
 const CATS = { sauce: "Sauces", cheese: "Cheeses", topping: "Toppings", other: "Dough / drinks / other" };
 const EMOJI = { sauce: "🍅", cheese: "🧀", topping: "✨", other: "🥖" };
@@ -293,15 +293,27 @@ function startParty(code) {
       .map(([cat, label]) => {
         const list = itemsIn(cat);
         if (!list.length) return "";
-        return `<div class="cat cat-${cat}"><h3><span class="emo">${EMOJI[cat]}</span>${label}</h3><ul class="list">${list
-          .map(([id, it]) => {
-            if (id === editingItem && it.uid === uid) return itemEditor(id, it, drafts);
-            const icon = iconOf(it);
-            return `<li><span>${icon ? `<span class="item-icon">${icon}</span>` : ""}<span class="item-name">${esc(it.name)}</span>${
-              it.amount ? `<span class="amt">${esc(it.amount)}</span>` : ""
-            }<span class="who">from ${esc(it.by)}</span></span>${
-              it.uid === uid ? `<span class="mine"><button class="ghost" data-edit-item="${id}" title="Edit">✏️</button>${delBtn("item", id)}</span>` : ""
-            }</li>`;
+        // Same-named ingredients from different people share one row
+        return `<div class="cat cat-${cat}"><h3><span class="emo">${EMOJI[cat]}</span>${label}</h3><ul class="list">${groupItems(list)
+          .map((g) => {
+            const icon = g.category === "topping" ? safeIcon(g.icon) : "";
+            const meToo = g.entries.some(([, it]) => it.uid === uid)
+              ? ""
+              : `<button class="ghost me-too" data-me-too="${g.entries[0][0]}" title="Bring some of this too">+ me too</button>`;
+            const name = `${icon ? `<span class="item-icon">${icon}</span>` : ""}<span class="item-name">${esc(g.name)}</span>`;
+            const bringer = ([id, it]) =>
+              `${it.amount ? `<span class="amt">${esc(it.amount)}</span>` : ""}<span class="who">from ${esc(it.by)}</span>`;
+            const controls = ([id, it]) =>
+              it.uid === uid ? `<span class="mine"><button class="ghost" data-edit-item="${id}" title="Edit">✏️</button>${delBtn("item", id)}</span>` : "";
+            const editing = ([id, it]) => id === editingItem && it.uid === uid;
+            if (g.entries.length === 1) {
+              const e = g.entries[0];
+              if (editing(e)) return itemEditor(e[0], e[1], drafts);
+              return `<li><span>${name}${bringer(e)}</span>${controls(e) || meToo}</li>`;
+            }
+            return `<li class="group"><div class="g-head"><span>${name}<span class="count">×${g.entries.length}</span></span>${meToo}</div><ul class="bringers">${g.entries
+              .map((e) => (editing(e) ? itemEditor(e[0], e[1], drafts) : `<li><span>${bringer(e)}</span>${controls(e)}</li>`))
+              .join("")}</ul></li>`;
           })
           .join("")}</ul></div>`;
       })
@@ -347,10 +359,10 @@ function startParty(code) {
       const list = itemsIn(cat);
       return `<div class="cat cat-${cat}"><h3><span class="emo">${EMOJI[cat]}</span>${CATS[cat]}</h3>${
         list.length
-          ? `<div class="chips">${list
-              .map(([id, it]) => {
-                const icon = iconOf(it);
-                return `<label class="chip"><input type="checkbox" value="${id}" ${checked.has(id) ? "checked" : ""}><span>${icon ? `<span class="emo">${icon}</span>` : ""}${esc(it.name)}</span></label>`;
+          ? `<div class="chips">${groupItems(list)
+              .map((g) => {
+                const icon = g.category === "topping" ? safeIcon(g.icon) : "";
+                return `<label class="chip"><input type="checkbox" value="${esc(g.key)}" ${checked.has(g.key) ? "checked" : ""}><span>${icon ? `<span class="emo">${icon}</span>` : ""}${esc(g.name)}</span></label>`;
               })
               .join("")}</div>`
           : `<p class="empty">No ${CATS[cat].toLowerCase()} committed yet.</p>`
@@ -382,6 +394,7 @@ function startParty(code) {
     const hadFocus = draftEl && document.activeElement === draftEl;
 
     const list = rankPizzas(state.pizzas);
+    const byKey = new Map(groupItems(Object.entries(state.items)).map((g) => [g.key, g]));
     const top = list.length ? voteCount(list[0][1]) : 0;
     $("pizzas").innerHTML = list.length
       ? list
@@ -390,15 +403,24 @@ function startParty(code) {
             const count = voteCount(p);
             const mine = !!votes[uid];
             const lead = count && count === top;
-            const ings = (p.ingredients || [])
-              .map((iid) => {
-                const it = state.items[iid];
-                if (!it) return `<span class="ing gone" title="no longer on the list">removed</span>`;
-                const icon = iconOf(it);
-                return `<span class="ing" title="from ${esc(it.by)}">${icon ? `<span class="emo">${icon}</span>` : ""}${esc(it.name)}</span>`;
+            // New pizzas list ingredient names; older ones list item ids
+            const wanted = Array.isArray(p.picks)
+              ? p.picks.filter((n) => typeof n === "string").map((n) => ({ name: n, g: byKey.get(ingredientKey(n)) }))
+              : (p.ingredients || []).map((iid) => {
+                  const it = state.items[iid];
+                  return it ? { name: it.name, g: byKey.get(ingredientKey(it.name)) } : { name: "removed", g: null };
+                });
+            const seen = new Set();
+            const unique = wanted.filter((w) => { const k = w.g?.key ?? `gone:${w.name}`; return seen.has(k) ? false : seen.add(k); });
+            const ings = unique
+              .map(({ name, g }) => {
+                if (!g) return `<span class="ing gone" title="Nobody's bringing this right now">${esc(name)}</span>`;
+                const icon = g.category === "topping" ? safeIcon(g.icon) : "";
+                const who = g.entries.map(([, it]) => it.by).join(", ");
+                return `<span class="ing" title="from ${esc(who)}">${icon ? `<span class="emo">${icon}</span>` : ""}${esc(g.name)}</span>`;
               })
               .join("");
-            const pieItems = (p.ingredients || []).map((iid) => state.items[iid]).filter(Boolean);
+            const pieItems = unique.filter((w) => w.g).map(({ g }) => ({ ...g.entries[0][1], icon: g.icon }));
             const heading =
               renaming === id
                 ? `<form class="rename" data-rename-form="${id}">
@@ -458,9 +480,12 @@ function startParty(code) {
     const by = myName();
     const name = $("pizza-name").value.trim();
     if (!by || !name) return;
-    const ingredients = [...document.querySelectorAll("#builder input:checked")].map((i) => i.value);
-    if (!ingredients.length) return toast("Pick at least one ingredient");
-    await store.add("pizzas", { name, by, uid, ingredients, createdAt: Date.now(), votes: { [uid]: by } });
+    const groups = new Map(groupItems(Object.entries(state.items)).map((g) => [g.key, g]));
+    const picks = [...document.querySelectorAll("#builder input:checked")]
+      .map((i) => groups.get(i.value)?.name.slice(0, 60))
+      .filter(Boolean);
+    if (!picks.length) return toast("Pick at least one ingredient");
+    await store.add("pizzas", { name, by, uid, picks, createdAt: Date.now(), votes: { [uid]: by } });
     $("pizza-name").value = "";
     document.querySelectorAll("#builder input:checked").forEach((i) => (i.checked = false));
     toast(`${name} is in the oven 🍕🔥`);
@@ -549,6 +574,19 @@ function startParty(code) {
     } else if ("styleDone" in b.dataset) {
       styling = null;
       renderPizzas();
+    } else if (b.dataset.meToo) {
+      // Bring some of what someone else is bringing: same name/type/icon, your own amount
+      const src = state.items[b.dataset.meToo];
+      const by = myName();
+      if (!src || !by) return;
+      const icon = src.category === "topping" ? safeIcon(src.icon) : "";
+      const ref = await store.add("items", { name: src.name.trim().slice(0, 60), category: src.category, by, uid, createdAt: Date.now(), ...(icon && { icon }) });
+      toast(`You're bringing ${src.name.trim()} too! Add how much if you like ✨`);
+      if (ref?.key) {
+        editingItem = ref.key;
+        renderItems();
+        document.querySelector('#items [data-edit-form] [data-f="amount"]')?.focus();
+      }
     } else if (b.dataset.editItem) {
       editingItem = b.dataset.editItem;
       renderItems();

@@ -129,6 +129,11 @@
                 ".validate": "newData.isString() && newData.val().matches(/^[-_A-Za-z0-9]{1,40}$/)"
               }
             },
+            "picks": {
+              "$i": {
+                ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60"
+              }
+            },
             "votes": {
               "$voter": {
                 ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && $voter === auth.uid && data.parent().parent().exists()",

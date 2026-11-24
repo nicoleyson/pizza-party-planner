@@ -319,6 +319,16 @@ ul.list li:hover { border-color: var(--dot); transform: translateX(3px); }
 .diets li.empty { display: block; background: none; border: 2.5px dashed var(--line); text-align: center; }
 .diets li.empty:hover { transform: none; }
 .diet-note { margin-left: var(--s2); }
+/* several people bringing the same thing */
+ul.list li.group { display: block; padding: var(--s2) var(--s2) var(--s1) 14px; }
+.g-head { display: flex; justify-content: space-between; align-items: center; gap: var(--s2); }
+.count { margin-left: 8px; font: 400 .8rem/1 var(--display); background: #fff; border: 2px solid var(--dot); border-radius: 999px; padding: 2px 7px; }
+ul.bringers { list-style: none; margin: 4px 0 0; padding: 0 0 0 10px; border-left: 3px solid var(--dot); display: grid; gap: 2px; }
+ul.bringers > li { display: flex; justify-content: space-between; align-items: center; gap: var(--s2); min-height: 32px; }
+ul.bringers > li > span > :first-child { margin-left: 0; }
+ul.bringers li.editing { padding: var(--s2) 0; }
+button.me-too { font-size: .8rem; font-weight: 800; color: var(--ink); border: 2px dashed var(--dot); border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+button.me-too:hover { transform: none; background: #fff; color: var(--ink); }
 .mine { display: inline-flex; align-items: center; gap: 2px; flex: none; }
 
 /* editing an ingredient in place */
