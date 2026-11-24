@@ -209,6 +209,7 @@ ul.list li:hover { border-color: var(--dot); transform: translateX(3px); }
 #pizza-form > button { margin-top: var(--s4); }
 #new-form { display: grid; gap: var(--s2); }
 #new-form button { margin-top: var(--s1); justify-self: center; }
+#not-host { text-align: center; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { position: relative; }
 .chip input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; pointer-events: none; }

@@ -1,12 +1,18 @@
 {
   "rules": {
+    "hosts": {
+      "$key": {
+        ".read": "auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && $key === auth.token.email.toLowerCase().replace('.', ',')",
+        ".write": false
+      }
+    },
     "parties": {
       ".read": false,
       ".write": false,
       "$party": {
         "meta": {
           ".read": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists())",
-          ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && newData.child('uid').val() === auth.uid && (!data.exists() || data.child('uid').val() === auth.uid)",
+          ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && newData.child('uid').val() === auth.uid && (!data.exists() || data.child('uid').val() === auth.uid) && (data.exists() || root.child('hosts').child(auth.token.email.toLowerCase().replace('.', ',')).val() === true)",
           ".validate": "newData.hasChildren(['title', 'uid'])",
           "title": {
             ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60"
@@ -35,9 +41,9 @@
           }
         },
         "people": {
-          ".read": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists())",
+          ".read": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && root.child('parties').child($party).child('meta').exists() && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists())",
           "$uid": {
-            ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && $uid === auth.uid",
+            ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && root.child('parties').child($party).child('meta').exists() && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && $uid === auth.uid",
             ".validate": "newData.hasChildren(['name'])",
             "name": {
               ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40"
@@ -54,9 +60,9 @@
           }
         },
         "items": {
-          ".read": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists())",
+          ".read": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && root.child('parties').child($party).child('meta').exists() && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists())",
           "$id": {
-            ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && $id.matches(/^[-_A-Za-z0-9]{1,40}$/) && (!data.exists() || data.child('uid').val() === auth.uid) && (!newData.exists() || newData.child('uid').val() === auth.uid)",
+            ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && root.child('parties').child($party).child('meta').exists() && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && $id.matches(/^[-_A-Za-z0-9]{1,40}$/) && (!data.exists() || data.child('uid').val() === auth.uid) && (!newData.exists() || newData.child('uid').val() === auth.uid)",
             ".validate": "newData.hasChildren(['name', 'category', 'by', 'uid'])",
             "name": {
               ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60"
@@ -85,9 +91,9 @@
           }
         },
         "diets": {
-          ".read": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists())",
+          ".read": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && root.child('parties').child($party).child('meta').exists() && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists())",
           "$id": {
-            ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && $id.matches(/^[-_A-Za-z0-9]{1,40}$/) && (!data.exists() || data.child('uid').val() === auth.uid) && (!newData.exists() || newData.child('uid').val() === auth.uid)",
+            ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && root.child('parties').child($party).child('meta').exists() && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && $id.matches(/^[-_A-Za-z0-9]{1,40}$/) && (!data.exists() || data.child('uid').val() === auth.uid) && (!newData.exists() || newData.child('uid').val() === auth.uid)",
             ".validate": "newData.hasChildren(['note', 'by', 'uid'])",
             "note": {
               ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
@@ -107,12 +113,12 @@
           }
         },
         "pizzas": {
-          ".read": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists())",
+          ".read": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && root.child('parties').child($party).child('meta').exists() && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists())",
           "$id": {
-            ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && $id.matches(/^[-_A-Za-z0-9]{1,40}$/) && (!data.exists() || data.child('uid').val() === auth.uid) && (!newData.exists() || newData.child('uid').val() === auth.uid)",
+            ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && root.child('parties').child($party).child('meta').exists() && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && $id.matches(/^[-_A-Za-z0-9]{1,40}$/) && (!data.exists() || data.child('uid').val() === auth.uid) && (!newData.exists() || newData.child('uid').val() === auth.uid)",
             ".validate": "newData.hasChildren(['name', 'by', 'uid'])",
             "name": {
-              ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && data.parent().exists()",
+              ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && root.child('parties').child($party).child('meta').exists() && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && data.parent().exists()",
               ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60"
             },
             "by": {
@@ -136,12 +142,12 @@
             },
             "votes": {
               "$voter": {
-                ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && $voter === auth.uid && data.parent().parent().exists()",
+                ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && root.child('parties').child($party).child('meta').exists() && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && $voter === auth.uid && data.parent().parent().exists()",
                 ".validate": "$voter.matches(/^[-A-Za-z0-9]{1,40}$/) && newData.isString() && newData.val().length <= 40"
               }
             },
             "look": {
-              ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && data.parent().exists()",
+              ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && root.child('parties').child($party).child('meta').exists() && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && data.parent().exists()",
               "sauce": {
                 ".validate": "newData.isString() && newData.val().matches(/^(tomato|vodka|white|pesto|bbq|berry|none)$/)"
               },

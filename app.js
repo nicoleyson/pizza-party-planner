@@ -115,6 +115,17 @@ if (!db) {
 // ── Gate: join or host ──
 function showGate() {
   $("gate").hidden = false;
+  // Only people the site owner added to hosts/ in Firebase can start parties.
+  // (The database rules enforce this; this just hides the form for everyone else.)
+  if (!account) $("host-section").hidden = false; // demo mode: everyone can host
+  else {
+    const email = account.user.email || "";
+    const showNotHost = () => { $("not-host-email").textContent = email; $("not-host").hidden = false; };
+    db.watch(`hosts/${email.toLowerCase().replaceAll(".", ",")}`, (v) => {
+      if (v === true) $("host-section").hidden = false;
+      else showNotHost();
+    }, showNotHost);
+  }
   $("join-form").addEventListener("submit", (e) => {
     e.preventDefault();
     const c = parseCode($("join-code").value);

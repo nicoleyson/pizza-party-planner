@@ -123,3 +123,16 @@ test("pizzas can store ingredient names (picks), kept short", () => {
   assert.match(pz.picks.$i[".validate"], /isString\(\)/);
   assert.match(pz.picks.$i[".validate"], /<= 60/); // matches the ingredient input's maxlength
 });
+
+test("only people on the hosts list can start a party, and party data needs a real party", () => {
+  const rules = JSON.parse(readFileSync(new URL("../database.rules.json", import.meta.url), "utf8"));
+  const { hosts, parties } = rules.rules;
+  assert.equal(hosts.$key[".write"], false, "nobody can add themselves as a host from the site");
+  assert.match(hosts.$key[".read"], /\$key === auth\.token\.email/, "people can only check their own hosts entry");
+  assert.match(parties.$party.meta[".write"], /data\.exists\(\) \|\| root\.child\('hosts'\)/, "new parties need a host");
+  for (const node of ["items", "pizzas", "diets", "people"]) {
+    assert.match(parties.$party[node][".read"], /child\('meta'\)\.exists\(\)/, `${node} needs an existing party`);
+    const write = parties.$party[node].$id?.[".write"] ?? parties.$party[node].$uid[".write"];
+    assert.match(write, /child\('meta'\)\.exists\(\)/, `${node} writes need an existing party`);
+  }
+});

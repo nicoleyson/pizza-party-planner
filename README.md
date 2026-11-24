@@ -2,7 +2,7 @@
 
 A tiny, free, no-accounts site for pizza-making parties. Guests type their name, say what ingredients they're bringing, build pizzas from what's actually coming, name them, and vote.
 
-**Private and reusable:** each party has a secret code in its invite link (`https://…/pizza-party/#pepperoni-k3x9q2mf7a`). Only people with the link can see or edit that party. The code is never in the repo, and the part after `#` isn't even sent to GitHub's servers. Click **Host a new party** for a fresh code each time.
+**Private and reusable:** each party has a secret code in its invite link (`https://…/pizza-party/#pepperoni-k3x9q2mf7a`). Only people with the link can see or edit that party. The code is never in the repo, and the part after `#` isn't even sent to GitHub's servers. Hosts click **Host a new party** for a fresh code each time. Only emails you list under `hosts` in Firebase can host, so strangers can't fill your database with their own parties.
 
 - Hosting: **GitHub Pages** (free)
 - Shared data: **Firebase Realtime Database** (free "Spark" plan, no credit card)
@@ -17,7 +17,8 @@ Until Firebase is set up, the site runs in **demo mode** (data saved only in you
 3. Open the **Rules** tab, paste the contents of [`database.rules.json`](database.rules.json), and click **Publish**.
 4. Copy the database address from the **Data** tab (like `https://your-project-default-rtdb.firebaseio.com`). You'll need it in a moment.
 5. Security → **Authentication** → Sign-in method → enable **Google**.
-6. Project settings → **Your apps** → add a Web app. For running locally, copy [`config.example.js`](config.example.js) to `config.js` and fill in your values. `config.js` is gitignored, so your keys and project never end up in the repo, and anyone can reuse this repo with their own Firebase project.
+6. **Choose who can host parties.** In the **Data** tab, add a `hosts` key at the top level, and under it one entry per host: the Google email in lowercase with every `.` swapped for `,`, set to `true`. For example, `sam.lee@gmail.com` becomes `sam,lee@gmail,com: true`. Only these people can create parties. Anyone else who signs in can still join a party they've been invited to, but can't start one. Nobody can add themselves from the website.
+7. Project settings → **Your apps** → add a Web app. For running locally, copy [`config.example.js`](config.example.js) to `config.js` and fill in your values. `config.js` is gitignored, so your keys and project never end up in the repo, and anyone can reuse this repo with their own Firebase project.
 
 > These values aren't really secrets: the live site has to send them to every visitor's browser so it can talk to Firebase. Keeping the key out of the repo just stops it showing up in GitHub's code search and secret scanners. What actually protects the data is the database rules, plus the authorized-domains list for sign-in.
 
