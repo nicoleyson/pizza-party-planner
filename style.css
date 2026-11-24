@@ -24,7 +24,10 @@
   color: var(--ink);
   /* Confetti on the page itself (not just the body), so it reaches the bottom
      of the window even when the content is short. */
-  background: var(--paper) url("confetti.svg") 0 0 / 280px 280px;
+  background:
+    url("confetti-top.svg") 0 50px / 640px 520px repeat-x,
+    url("confetti.svg") 0 0 / 460px 460px,
+    var(--paper);
   min-height: 100%;
 }
 * { box-sizing: border-box; }
@@ -340,7 +343,7 @@ ul.list li.editing:hover { transform: none; }
 .item-edit .edit-actions { grid-column: 2 / -1; justify-content: flex-end; }
 .item-edit .edit-actions button { padding: 7px 16px; }
 .diet-form #diet-note { flex: 1; min-width: 0; }
-.foot { text-align: center; color: var(--muted); font-weight: 800; font-size: .85rem; padding: 8px 0 40px; }
+.foot { text-align: center; color: var(--muted); font-weight: 800; font-size: .85rem; width: max-content; max-width: calc(100% - 36px); margin: 14px auto 40px; padding: 4px 14px; background: var(--paper); border-radius: 999px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
