@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Pizza Party</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍕</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<p id="mode" class="mode" hidden></p>
+
+<!-- Shown when there's no party code in the link -->
+<div id="gate" hidden>
+  <header><h1>🍕 Pizza Party</h1><p class="sub">Got an invite link? Just open it. Or paste the party code here.</p></header>
+  <main>
+    <section>
+      <h2>Join a party</h2>
+      <form id="join-form" class="row">
+        <input id="join-code" placeholder="party code or invite link" required aria-label="Party code">
+        <button>Join</button>
+      </form>
+    </section>
+    <section>
+      <h2>Host a new party</h2>
+      <form id="new-form">
+        <input id="new-title" maxlength="60" placeholder="Party name (e.g. Sam's Pizza Night)" required aria-label="Party name">
+        <input id="new-details" maxlength="200" placeholder="When / where (optional)" aria-label="Details">
+        <button>Create party + get invite link</button>
+      </form>
+    </section>
+  </main>
+</div>
+
+<!-- The party -->
+<div id="party" hidden>
+  <header>
+    <h1><span id="title">Pizza Party</span> <button class="ghost" id="edit-meta" title="Edit" hidden>✏️</button></h1>
+    <p id="details" class="sub"></p>
+    <div class="row wrap">
+      <label class="me">Your name <input id="my-name" maxlength="40" placeholder="e.g. Sam" autocomplete="given-name"></label>
+      <button class="secondary" id="copy-link">🔗 Copy invite link</button>
+      <a href="#" id="leave" class="leave">other party</a>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <h2>What are you bringing?</h2>
+      <form id="item-form" class="row">
+        <select id="item-cat" aria-label="Category">
+          <option value="sauce">Sauce</option>
+          <option value="cheese">Cheese</option>
+          <option value="topping" selected>Topping</option>
+          <option value="other">Dough / drinks / other</option>
+        </select>
+        <input id="item-name" maxlength="60" placeholder="e.g. fresh basil" required aria-label="Ingredient">
+        <button>Add</button>
+      </form>
+      <div id="items"></div>
+    </section>
+
+    <section>
+      <h2>Propose a pizza</h2>
+      <form id="pizza-form">
+        <input id="pizza-name" maxlength="60" placeholder="Name your pizza (e.g. The Basil Instinct)" required aria-label="Pizza name">
+        <div id="builder"></div>
+        <button>Propose it</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>The pizzas <small>— vote for your favorites</small></h2>
+      <div id="pizzas"></div>
+    </section>
+  </main>
+</div>
+
+<div id="toast" role="status"></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

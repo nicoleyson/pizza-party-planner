@@ -1,0 +1,40 @@
+# 🍕 Pizza Party
+
+A tiny, free, no-accounts site for pizza-making parties. Guests type their name, say what ingredients they're bringing, build pizzas from what's actually coming, name them, and vote.
+
+**Private and reusable:** each party has a secret code in its invite link (`https://…/pizza-party/#pepperoni-k3x9q2mf7a`). Only people with the link can see or edit that party. The code is never in the repo, and the part after `#` isn't even sent to GitHub's servers. Click **Host a new party** for a fresh code each time.
+
+- Hosting: **GitHub Pages** (free)
+- Shared data: **Firebase Realtime Database** (free "Spark" plan, no credit card)
+- No build step: plain HTML/CSS/JS
+
+Until Firebase is set up, the site runs in **demo mode** (data saved only in your own browser), so you can try it right away by opening `index.html`.
+
+## 1. Set up Firebase (about 5 minutes)
+
+1. Go to <https://console.firebase.google.com> → **Add project** (Google Analytics: off).
+2. Left sidebar → **Build → Realtime Database** → **Create database** → any location → **Start in locked mode**.
+3. Open the **Rules** tab, paste the contents of [`database.rules.json`](database.rules.json), and click **Publish**.
+4. Project overview (⚙️ → **Project settings**) → **Your apps** → click the **`</>`** (Web) icon → register an app (no hosting needed).
+5. Copy the `firebaseConfig` values it shows into [`config.js`](config.js). Make sure `databaseURL` is filled in.
+
+> The Firebase web config isn't a secret; it's meant to live in client code. The rules are what limit what people can write.
+
+## 2. Publish on GitHub Pages
+
+1. Push this folder to a GitHub repo.
+2. Repo → **Settings → Pages** → Source: **Deploy from a branch** → `main` / `(root)` → Save.
+3. After a minute it's live at `https://<your-username>.github.io/<repo-name>/`.
+
+## Hosting a party
+
+1. Open the site → **Host a new party** → type a name and when/where.
+2. Click **🔗 Copy invite link** and send it to your group chat.
+3. You (the creator's browser) can edit the party name/details with ✏️.
+
+## Good to know
+
+- The invite link *is* the password: share it with friends only. Anyone who has it can add items, propose, rename, and vote. If it leaks, just host a new party.
+- The site itself is public (GitHub Pages), but without a code it only shows the join/host screen. The database refuses to list parties, so codes can't be discovered.
+- Each browser gets a random ID, so people can only delete their own items/pizzas and vote once per pizza per browser. Fine for friends; not Fort Knox.
+- To clean up old parties: Firebase console → Realtime Database → `parties` → delete the ones you don't need.
