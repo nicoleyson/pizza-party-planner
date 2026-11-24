@@ -1,5 +1,5 @@
 import { firebaseConfig } from "./config.js";
-import { pieHTML } from "./pie.js";
+import { pieHTML, ICONS, safeIcon } from "./pie.js";
 
 const CATS = { sauce: "Sauces", cheese: "Cheeses", topping: "Toppings", other: "Dough / drinks / other" };
 const EMOJI = { sauce: "🍅", cheese: "🧀", topping: "🍄", other: "🥖" };
@@ -136,19 +136,32 @@ function startParty(code) {
   });
 
   let state = { meta: {}, items: {}, pizzas: {} };
+  let renaming = null; // pizza id being renamed inline
+  let armed = null; // "item:<id>" or "pizza:<id>" waiting for a second tap to delete
+  let armTimer;
 
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const itemsIn = (cat) =>
     Object.entries(state.items)
       .filter(([, it]) => it.category === cat)
       .sort((a, b) => a[1].name.localeCompare(b[1].name));
+  const iconOf = (it) => (it.category === "topping" ? safeIcon(it.icon) : "");
+  const delBtn = (kind, id) =>
+    armed === `${kind}:${id}`
+      ? `<button class="ghost danger" data-del="${kind}:${id}">tap again to delete</button>`
+      : `<button class="ghost" data-del="${kind}:${id}" title="Delete">✕</button>`;
+
+  // Icon picker (toppings only, since that's what gets drawn as dots)
+  $("item-icon").insertAdjacentHTML("beforeend", ICONS.map(([e, label]) => `<option value="${e}">${e} ${label}</option>`).join(""));
+  const syncIconField = () => ($("item-form").querySelector(".f-icon").style.visibility = $("item-cat").value === "topping" ? "" : "hidden");
+  $("item-cat").addEventListener("change", syncIconField);
+  syncIconField();
 
   function render() {
     const title = state.meta.title || "Pizza Party 🍕";
     $("title").textContent = title;
     document.title = title;
     $("details").textContent = state.meta.details || "";
-    $("edit-meta").hidden = state.meta.uid !== uid;
     renderItems();
     renderBuilder();
     renderPizzas();
@@ -160,9 +173,12 @@ function startParty(code) {
         const list = itemsIn(cat);
         if (!list.length) return "";
         return `<div class="cat"><h3>${EMOJI[cat]} ${label}</h3><ul class="list">${list
-          .map(([id, it]) => `<li><span><span class="item-name">${esc(it.name)}</span>${it.amount ? `<span class="amt">${esc(it.amount)}</span>` : ""}<span class="who">from ${esc(it.by)}</span></span>${
-            it.uid === uid ? `<button class="ghost" data-del-item="${id}" title="Remove">✕</button>` : ""
-          }</li>`)
+          .map(([id, it]) => {
+            const icon = iconOf(it);
+            return `<li><span>${icon ? `<span class="item-icon">${icon}</span>` : ""}<span class="item-name">${esc(it.name)}</span>${
+              it.amount ? `<span class="amt">${esc(it.amount)}</span>` : ""
+            }<span class="who">from ${esc(it.by)}</span></span>${it.uid === uid ? delBtn("item", id) : ""}</li>`;
+          })
           .join("")}</ul></div>`;
       })
       .join("");
@@ -177,7 +193,10 @@ function startParty(code) {
       return `<div class="cat"><h3>${EMOJI[cat]} ${CATS[cat]}</h3>${
         list.length
           ? `<div class="chips">${list
-              .map(([id, it]) => `<label class="chip"><input type="checkbox" value="${id}" ${checked.has(id) ? "checked" : ""}><span>${esc(it.name)}</span></label>`)
+              .map(([id, it]) => {
+                const icon = iconOf(it);
+                return `<label class="chip"><input type="checkbox" value="${id}" ${checked.has(id) ? "checked" : ""}><span>${icon ? icon + " " : ""}${esc(it.name)}</span></label>`;
+              })
               .join("")}</div>`
           : `<p class="empty">No ${CATS[cat].toLowerCase()} committed yet.</p>`
       }</div>`;
@@ -185,6 +204,11 @@ function startParty(code) {
   }
 
   function renderPizzas() {
+    // Keep whatever someone is typing in a rename box across live updates
+    const draftEl = document.querySelector("#pizzas .rename input");
+    const draft = draftEl?.value;
+    const hadFocus = draftEl && document.activeElement === draftEl;
+
     const voteCount = (p) => Object.keys(p.votes || {}).length;
     const list = Object.entries(state.pizzas).sort((a, b) => voteCount(b[1]) - voteCount(a[1]) || a[1].createdAt - b[1].createdAt);
     const top = list.length ? voteCount(list[0][1]) : 0;
@@ -198,19 +222,26 @@ function startParty(code) {
             const ings = (p.ingredients || [])
               .map((iid) => {
                 const it = state.items[iid];
-                return it
-                  ? `<span class="ing" title="brought by ${esc(it.by)}">${esc(it.name)}</span>`
-                  : `<span class="ing gone" title="no longer on the list">removed</span>`;
+                if (!it) return `<span class="ing gone" title="no longer on the list">removed</span>`;
+                const icon = iconOf(it);
+                return `<span class="ing" title="from ${esc(it.by)}">${icon ? icon + " " : ""}${esc(it.name)}</span>`;
               })
               .join("");
             const pieItems = (p.ingredients || []).map((iid) => state.items[iid]).filter(Boolean);
+            const heading =
+              renaming === id
+                ? `<form class="rename" data-rename-form="${id}">
+                     <input maxlength="60" required value="${esc(draft ?? p.name)}" aria-label="Pizza name">
+                     <button>Save</button><button type="button" class="ghost" data-cancel-rename>Cancel</button>
+                   </form>`
+                : `<h3>${lead ? '<span class="crown" title="Most votes">👑</span>' : ""}${esc(p.name)}
+                     <button class="ghost" data-rename="${id}" title="Rename">✏️</button>
+                     ${p.uid === uid ? delBtn("pizza", id) : ""}
+                   </h3>`;
             return `<div class="pizza ${lead ? "leader" : ""}">
               ${pieHTML(pieItems)}
               <div class="body">
-                <h3>${lead ? '<span class="crown" title="Most votes">👑</span>' : ""}${esc(p.name)}
-                  <button class="ghost" data-rename="${id}" title="Rename">✏️</button>
-                  ${p.uid === uid ? `<button class="ghost" data-del-pizza="${id}" title="Delete">✕</button>` : ""}
-                </h3>
+                ${heading}
                 <div class="by">proposed by ${esc(p.by)}</div>
                 <div class="ings">${ings || `<span class="ing">just dough, apparently</span>`}</div>
                 ${count ? `<div class="voters">loved by ${Object.values(votes).map(esc).join(", ")}</div>` : ""}
@@ -220,6 +251,7 @@ function startParty(code) {
           })
           .join("")
       : `<p class="empty">No pizzas yet. Dream one up above! 💭</p>`;
+    if (hadFocus) document.querySelector("#pizzas .rename input")?.focus();
   }
 
   // ── Actions ──
@@ -228,10 +260,13 @@ function startParty(code) {
     const by = myName();
     const name = $("item-name").value.trim();
     if (!by || !name) return;
+    const category = $("item-cat").value;
     const amount = $("item-amount").value.trim();
-    await store.add("items", { name, category: $("item-cat").value, by, uid, createdAt: Date.now(), ...(amount && { amount }) });
+    const icon = category === "topping" ? safeIcon($("item-icon").value) : "";
+    await store.add("items", { name, category, by, uid, createdAt: Date.now(), ...(amount && { amount }), ...(icon && { icon }) });
     $("item-name").value = "";
     $("item-amount").value = "";
+    $("item-icon").value = "";
     toast(`Yay, thanks ${by}! ${name} added 💛`);
   });
 
@@ -248,11 +283,36 @@ function startParty(code) {
     toast(`${name} is in the oven 🍕🔥`);
   });
 
-  $("edit-meta").addEventListener("click", async () => {
-    const title = prompt("Party name:", state.meta.title)?.trim();
+  // Party name + details: anyone at the party can edit, right in the header
+  const showMetaForm = (on) => {
+    $("meta-form").hidden = !on;
+    $("meta-view").hidden = on;
+    if (on) {
+      $("meta-title").value = state.meta.title || "";
+      $("meta-details").value = state.meta.details || "";
+      $("meta-title").focus();
+    }
+  };
+  $("edit-meta").addEventListener("click", () => showMetaForm(true));
+  $("meta-cancel").addEventListener("click", () => showMetaForm(false));
+  $("meta-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const title = $("meta-title").value.trim().slice(0, 60);
     if (!title) return;
-    const details = prompt("When / where:", state.meta.details || "");
-    await store.set("meta", { ...state.meta, title: title.slice(0, 60), details: (details ?? state.meta.details ?? "").trim().slice(0, 200) });
+    await store.set("meta", { uid, createdAt: Date.now(), ...state.meta, title, details: $("meta-details").value.trim().slice(0, 200) });
+    showMetaForm(false);
+    toast("Party updated ✨");
+  });
+
+  document.addEventListener("submit", async (e) => {
+    const f = e.target.closest("[data-rename-form]");
+    if (!f) return;
+    e.preventDefault();
+    const name = f.querySelector("input").value.trim().slice(0, 60);
+    const id = f.dataset.renameForm;
+    renaming = null;
+    if (name && state.pizzas[id]) await store.set(`pizzas/${id}/name`, name);
+    renderPizzas();
   });
 
   document.addEventListener("click", async (e) => {
@@ -264,13 +324,26 @@ function startParty(code) {
       const id = b.dataset.vote;
       await store.set(`pizzas/${id}/votes/${uid}`, state.pizzas[id]?.votes?.[uid] ? null : by);
     } else if (b.dataset.rename) {
-      const id = b.dataset.rename;
-      const name = prompt("New name for this pizza:", state.pizzas[id]?.name)?.trim();
-      if (name) await store.set(`pizzas/${id}/name`, name.slice(0, 60));
-    } else if (b.dataset.delItem) {
-      if (confirm("Remove this from the list?")) await store.set(`items/${b.dataset.delItem}`, null);
-    } else if (b.dataset.delPizza) {
-      if (confirm("Delete this pizza (and its votes)?")) await store.set(`pizzas/${b.dataset.delPizza}`, null);
+      renaming = b.dataset.rename;
+      renderPizzas();
+      const input = document.querySelector("#pizzas .rename input");
+      input?.focus();
+      input?.select();
+    } else if ("cancelRename" in b.dataset) {
+      renaming = null;
+      renderPizzas();
+    } else if (b.dataset.del) {
+      // Two taps to delete, no pop-up needed
+      const [kind, id] = b.dataset.del.split(":");
+      clearTimeout(armTimer);
+      if (armed === b.dataset.del) {
+        armed = null;
+        await store.set(`${kind === "item" ? "items" : "pizzas"}/${id}`, null);
+      } else {
+        armed = b.dataset.del;
+        armTimer = setTimeout(() => { armed = null; render(); }, 3000);
+        render();
+      }
     }
   });
 

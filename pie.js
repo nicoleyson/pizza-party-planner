@@ -63,6 +63,21 @@ export function sauceColor(name) {
   return SAUCES.find(([re]) => re.test(n))?.[1] ?? TOMATO;
 }
 
+// Icons people can pick when the auto-guess looks wrong.
+export const ICONS = [
+  ["🍅", "tomato"], ["🫒", "olive"], ["🍄", "mushroom"], ["🧅", "onion"], ["🧄", "garlic"],
+  ["🫑", "bell pepper"], ["🌶️", "chili"], ["🌿", "herbs"], ["🥬", "leafy greens"], ["🥦", "broccoli"],
+  ["🍆", "eggplant"], ["🥔", "potato"], ["🍠", "sweet potato"], ["🥕", "carrot"], ["🥑", "avocado"],
+  ["🍋", "lemon"], ["🍞", "bread / stuffing"], ["🌽", "corn"], ["🍍", "pineapple"], ["🍑", "peach"],
+  ["🍐", "pear"], ["🍎", "apple"], ["🍓", "strawberry"], ["🫐", "berries"], ["🍒", "cherry"],
+  ["🥓", "bacon"], ["🍗", "chicken / turkey"], ["🍖", "meat"], ["🌭", "sausage"], ["🦐", "shrimp"],
+  ["🐟", "fish"], ["🥚", "egg"], ["🍯", "honey"], ["🥜", "nuts"], ["🧈", "butter"],
+  ["🍫", "chocolate"], ["🍬", "candy"], ["🧂", "salt / spice"], ["🦄", "something magical"],
+];
+const ICON_SET = new Set(ICONS.map(([e]) => e));
+// Only draw icons from our list, so nothing odd from the database ends up on the page.
+export const safeIcon = (s) => (ICON_SET.has(s) ? s : "");
+
 // Dots on a sunflower spiral so they spread evenly for any count.
 function spots(n) {
   return Array.from({ length: n }, (_, k) => {
@@ -79,7 +94,14 @@ export function pieHTML(items) {
   // At least 10 dots so it looks loaded; up to 16 so every topping shows.
   const n = tops.length ? Math.min(Math.max(10, tops.length), 16) : 0;
   const dots = spots(n)
-    .map(([x, y], k) => `<i class="top" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%;background:${toppingColor(tops[k % tops.length].name)}"></i>`)
+    .map(([x, y], k) => {
+      const t = tops[k % tops.length];
+      const pos = `left:${x.toFixed(1)}%;top:${y.toFixed(1)}%`;
+      const icon = safeIcon(t.icon);
+      return icon
+        ? `<i class="top icon" style="${pos}">${icon}</i>`
+        : `<i class="top" style="${pos};background:${toppingColor(t.name)}"></i>`;
+    })
     .join("");
   // Two sauces? Split the pie half and half.
   const [s1, s2] = sauces.map((s) => sauceColor(s.name));

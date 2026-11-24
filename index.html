@@ -41,8 +41,15 @@
 <div id="party" hidden>
   <header>
     <div class="hero-pie" aria-hidden="true">🍕</div>
-    <h1><span id="title">Pizza Party</span> <button class="ghost" id="edit-meta" title="Edit" hidden>✏️</button></h1>
-    <p id="details" class="sub"></p>
+    <div id="meta-view">
+      <h1><span id="title">Pizza Party</span> <button class="ghost" id="edit-meta" title="Edit party name and details">✏️</button></h1>
+      <p id="details" class="sub"></p>
+    </div>
+    <form id="meta-form" class="meta-form" hidden>
+      <input id="meta-title" maxlength="60" required aria-label="Party name" placeholder="Party name">
+      <input id="meta-details" maxlength="200" aria-label="When / where" placeholder="When / where (optional)">
+      <div class="row"><button>Save</button><button type="button" class="secondary" id="meta-cancel">Cancel</button></div>
+    </form>
     <div class="row wrap">
       <label class="me">Your name <input id="my-name" maxlength="40" placeholder="e.g. Sam" autocomplete="given-name"></label>
       <button class="secondary" id="copy-link">🔗 Copy invite link</button>
@@ -65,12 +72,15 @@
         <label>Ingredient
           <input id="item-name" maxlength="60" placeholder="e.g. fresh basil" required>
         </label>
-        <label><span>How much <span class="opt">(optional)</span></span>
+        <label class="f-amt"><span>How much <span class="opt">(optional)</span></span>
           <input id="item-amount" maxlength="30" placeholder="e.g. 2 cups">
+        </label>
+        <label class="f-icon"><span>Pizza icon <span class="opt">(optional)</span></span>
+          <select id="item-icon"><option value="">✨ Auto</option></select>
         </label>
         <button>Add ＋</button>
       </form>
-      <p class="hint">“How much” is optional, and any unit is fine: 2 cups, 1 jar, a handful, lots 🤷</p>
+      <p class="hint">Both optional. Any unit is fine (2 cups, 1 jar, a handful, lots 🤷). Pick an icon if the topping looks wrong on the pizza drawings.</p>
       <div id="items"></div>
     </section>
 

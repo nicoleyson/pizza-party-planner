@@ -17,6 +17,7 @@
   background: var(--bg);
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   margin: 0;
   line-height: 1.45;
@@ -92,15 +93,31 @@ button.secondary { background: #fff; color: var(--red); border: 2px solid var(--
 .row { display: flex; gap: 8px; }
 @media (max-width: 520px) { .row { flex-wrap: wrap; } .row button { flex: 1; } }
 
-.item-form { display: grid; grid-template-columns: 145px 1fr 180px auto; gap: 10px; align-items: end; }
+.item-form {
+  display: grid; gap: 10px; align-items: end;
+  grid-template-columns: 150px 1fr 190px auto;
+  grid-template-areas: "type name name name" "amt amt icon add";
+}
+.item-form label:nth-child(1) { grid-area: type; }
+.item-form label:nth-child(2) { grid-area: name; }
+.item-form .f-amt { grid-area: amt; }
+.item-form .f-icon { grid-area: icon; }
+.item-form button { grid-area: add; }
 .item-form label { display: grid; gap: 4px; font-size: .8rem; font-weight: 800; color: var(--muted); white-space: nowrap; min-width: 0; }
 .item-form .opt { font-weight: 600; }
 .item-form select, .item-form input { width: 100%; font-size: 1rem; color: var(--ink); }
 @media (max-width: 620px) {
-  .item-form { grid-template-columns: 1fr 1fr; }
-  .item-form label:nth-child(2) { grid-column: 1 / -1; order: -1; }
-  .item-form button { grid-column: 1 / -1; }
+  .item-form { grid-template-columns: 1fr 1fr; grid-template-areas: "name name" "type icon" "amt amt" "add add"; }
 }
+.meta-form { display: grid; gap: 10px; max-width: 460px; margin: 6px auto 16px; }
+.meta-form #meta-title { font-family: var(--display); font-size: 1.4rem; text-align: center; }
+.meta-form .row { justify-content: center; }
+.rename { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
+.rename input { flex: 1; min-width: 140px; font-family: var(--display); font-size: 1.05rem; padding: 6px 10px; }
+.rename button { padding: 7px 14px; }
+button.ghost.danger { color: #fff; background: var(--red); border-radius: 999px; padding: 3px 10px; font-size: .8rem; font-weight: 800; }
+.item-icon { margin-right: 6px; }
+.pie .top.icon { width: auto; height: auto; background: none; box-shadow: none; font-size: 12px; font-style: normal; line-height: 1; }
 
 .cat { margin-top: 16px; }
 .cat h3 { font-size: .95rem; color: var(--ink); margin: 0 0 6px; display: flex; align-items: center; gap: 6px; }

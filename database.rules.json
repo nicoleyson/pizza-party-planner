@@ -20,6 +20,7 @@
             ".validate": "newData.hasChildren(['name', 'category', 'by', 'uid'])",
             "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60" },
             "amount": { ".validate": "newData.isString() && newData.val().length <= 30" },
+            "icon": { ".validate": "newData.isString() && newData.val().length <= 8" },
             "category": { ".validate": "newData.isString() && newData.val().matches(/^(sauce|cheese|topping|other)$/)" },
             "by": { ".validate": "newData.isString() && newData.val().length <= 40" },
             "uid": { ".validate": "newData.isString() && newData.val().length <= 40" },
