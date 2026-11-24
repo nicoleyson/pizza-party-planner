@@ -1,5 +1,6 @@
 import { firebaseConfig } from "./config.js";
 import { pieHTML, ICONS, safeIcon } from "./pie.js";
+import { parseCode, newCode, esc, cleanIds, voteCount, rankPizzas } from "./lib.js";
 
 const CATS = { sauce: "Sauces", cheese: "Cheeses", topping: "Toppings", other: "Dough / drinks / other" };
 const EMOJI = { sauce: "🍅", cheese: "🧀", topping: "🍄", other: "🥖" };
@@ -12,17 +13,6 @@ const uid = localStorage.uid || (localStorage.uid = crypto.randomUUID());
 
 // ── Which party: the secret code lives after the # in the invite link ──
 // It's never sent to GitHub's servers and never stored in the repo.
-const CODE_RE = /^[a-z0-9-]{12,40}$/;
-const parseCode = (s) => {
-  s = String(s || "").trim().toLowerCase();
-  if (s.includes("#")) s = s.split("#").pop();
-  return CODE_RE.test(s) ? s : null;
-};
-function newCode() {
-  const words = ["pepperoni", "basil", "mozz", "crust", "oregano", "calzone", "garlic", "olive", "funghi", "marinara"];
-  const rand = [...crypto.getRandomValues(new Uint8Array(10))].map((b) => "abcdefghjkmnpqrstuvwxyz23456789"[b % 31]).join("");
-  return `${words[Math.floor(Math.random() * words.length)]}-${rand}`;
-}
 addEventListener("hashchange", () => location.reload());
 
 // ── Storage: Firebase if configured, otherwise this-browser-only demo ──
@@ -135,12 +125,11 @@ function startParty(code) {
     location.reload();
   });
 
-  let state = { meta: {}, items: {}, pizzas: {} };
+  let state = { meta: {}, items: {}, pizzas: {}, diets: {} };
   let renaming = null; // pizza id being renamed inline
-  let armed = null; // "item:<id>" or "pizza:<id>" waiting for a second tap to delete
+  let armed = null; // "item:<id>", "pizza:<id>" or "diet:<id>" waiting for a second tap to delete
   let armTimer;
 
-  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const itemsIn = (cat) =>
     Object.entries(state.items)
       .filter(([, it]) => it.category === cat)
@@ -167,6 +156,7 @@ function startParty(code) {
     $("edit-meta").hidden = !isHost;
     if (!isHost) showMetaForm(false);
     renderItems();
+    renderDiets();
     renderBuilder();
     renderPizzas();
   }
@@ -176,7 +166,7 @@ function startParty(code) {
       .map(([cat, label]) => {
         const list = itemsIn(cat);
         if (!list.length) return "";
-        return `<div class="cat"><h3><span class="emo">${EMOJI[cat]}</span>${label}</h3><ul class="list">${list
+        return `<div class="cat cat-${cat}"><h3><span class="emo">${EMOJI[cat]}</span>${label}</h3><ul class="list">${list
           .map(([id, it]) => {
             const icon = iconOf(it);
             return `<li><span>${icon ? `<span class="item-icon">${icon}</span>` : ""}<span class="item-name">${esc(it.name)}</span>${
@@ -189,12 +179,23 @@ function startParty(code) {
     $("items").innerHTML = html || `<p class="empty">The table is empty… be the first to bring something! 🥺</p>`;
   }
 
+  function renderDiets() {
+    const list = Object.entries(state.diets).sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0));
+    $("diets").innerHTML = list.length
+      ? list
+          .map(([id, d]) => `<li><span><span class="item-name">${esc(d.by)}</span><span class="diet-note">${esc(d.note)}</span></span>${
+            d.uid === uid ? delBtn("diet", id) : ""
+          }</li>`)
+          .join("")
+      : `<li class="empty">None yet! Allergies, veggie, anti-pineapple? Add it here 💚</li>`;
+  }
+
   function renderBuilder() {
     const el = $("builder");
     const checked = new Set([...el.querySelectorAll("input:checked")].map((i) => i.value));
     el.innerHTML = PIZZA_CATS.map((cat) => {
       const list = itemsIn(cat);
-      return `<div class="cat"><h3><span class="emo">${EMOJI[cat]}</span>${CATS[cat]}</h3>${
+      return `<div class="cat cat-${cat}"><h3><span class="emo">${EMOJI[cat]}</span>${CATS[cat]}</h3>${
         list.length
           ? `<div class="chips">${list
               .map(([id, it]) => {
@@ -213,8 +214,7 @@ function startParty(code) {
     const draft = draftEl?.value;
     const hadFocus = draftEl && document.activeElement === draftEl;
 
-    const voteCount = (p) => Object.keys(p.votes || {}).length;
-    const list = Object.entries(state.pizzas).sort((a, b) => voteCount(b[1]) - voteCount(a[1]) || a[1].createdAt - b[1].createdAt);
+    const list = rankPizzas(state.pizzas);
     const top = list.length ? voteCount(list[0][1]) : 0;
     $("pizzas").innerHTML = list.length
       ? list
@@ -272,6 +272,16 @@ function startParty(code) {
     $("item-amount").value = "";
     $("item-icon").value = "";
     toast(`Yay, thanks ${by}! ${name} added 💛`);
+  });
+
+  $("diet-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const by = myName();
+    const note = $("diet-note").value.trim().slice(0, 80);
+    if (!by || !note) return;
+    await store.add("diets", { note, by, uid, createdAt: Date.now() });
+    $("diet-note").value = "";
+    toast("Noted! We'll keep it in mind 💚");
   });
 
   $("pizza-form").addEventListener("submit", async (e) => {
@@ -342,7 +352,8 @@ function startParty(code) {
       clearTimeout(armTimer);
       if (armed === b.dataset.del) {
         armed = null;
-        await store.set(`${kind === "item" ? "items" : "pizzas"}/${id}`, null);
+        const path = { item: "items", pizza: "pizzas", diet: "diets" }[kind];
+        if (path) await store.set(`${path}/${id}`, null);
       } else {
         armed = b.dataset.del;
         armTimer = setTimeout(() => { armed = null; render(); }, 3000);
@@ -353,10 +364,8 @@ function startParty(code) {
 
   // IDs end up inside HTML attributes, so ignore anything that isn't a plain ID
   // (the database rules reject them too; this is a second lock on the door).
-  const SAFE_ID = /^[-_A-Za-z0-9]{1,40}$/;
-  const cleanIds = (obj) => Object.fromEntries(Object.entries(obj || {}).filter(([k, v]) => SAFE_ID.test(k) && v && typeof v === "object"));
   db.watch(ROOT, (data) => {
-    state = { meta: data.meta || {}, items: cleanIds(data.items), pizzas: cleanIds(data.pizzas) };
+    state = { meta: data.meta || {}, items: cleanIds(data.items), pizzas: cleanIds(data.pizzas), diets: cleanIds(data.diets) };
     render();
   });
 }

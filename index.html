@@ -8,16 +8,16 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍕</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sniglet:wght@400;800&family=Nunito:wght@400;600;700;800&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="tablecloth" aria-hidden="true"></div>
+<div class="awning" aria-hidden="true"></div>
 <p id="mode" class="mode" hidden></p>
 
 <!-- Shown when there's no party code in the link -->
 <div id="gate" hidden>
-  <header><div class="hero-pie" aria-hidden="true">🍕</div><h1>Pizza Party</h1><p class="sub">Got an invite link? Just open it. Or paste the party code here.</p></header>
+  <header><div class="hero-pie" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M12 27 Q50 13 88 27 L54 91 Q50 98 46 91 Z" fill="#ffd25e" stroke="#4a2c22" stroke-width="3.5" stroke-linejoin="round"/><path d="M8 25 Q50 3 92 25 Q95 35 86 35 Q50 19 14 35 Q5 35 8 25 Z" fill="#e8a25a" stroke="#4a2c22" stroke-width="3.5" stroke-linejoin="round"/><circle cx="27" cy="42" r="5.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="73" cy="42" r="5.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="50" cy="80" r="4.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="45" cy="56" r="6" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><path d="M58 44 q8 -2 9 6 q-8 2 -9 -6z" fill="#6fb35c" stroke="#4a2c22" stroke-width="2" stroke-linejoin="round"/></svg></div><h1>Pizza Party</h1><p class="sub">Got an invite link? Just open it. Or paste the party code here.</p></header>
   <main>
     <section>
       <h2><span class="h-emoji">💌</span> Join a party</h2>
@@ -40,7 +40,7 @@
 <!-- The party -->
 <div id="party" hidden>
   <header>
-    <div class="hero-pie" aria-hidden="true">🍕</div>
+    <div class="hero-pie" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M12 27 Q50 13 88 27 L54 91 Q50 98 46 91 Z" fill="#ffd25e" stroke="#4a2c22" stroke-width="3.5" stroke-linejoin="round"/><path d="M8 25 Q50 3 92 25 Q95 35 86 35 Q50 19 14 35 Q5 35 8 25 Z" fill="#e8a25a" stroke="#4a2c22" stroke-width="3.5" stroke-linejoin="round"/><circle cx="27" cy="42" r="5.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="73" cy="42" r="5.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="50" cy="80" r="4.5" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><circle cx="45" cy="56" r="6" fill="#ef5b45" stroke="#4a2c22" stroke-width="2.5"/><path d="M58 44 q8 -2 9 6 q-8 2 -9 -6z" fill="#6fb35c" stroke="#4a2c22" stroke-width="2" stroke-linejoin="round"/></svg></div>
     <div id="meta-view">
       <h1><span id="title">Pizza Party</span> <button class="ghost" id="edit-meta" title="Edit party name and details">✏️</button></h1>
       <p id="details" class="sub"></p>
@@ -50,11 +50,11 @@
       <input id="meta-details" maxlength="200" aria-label="When / where" placeholder="When / where (optional)">
       <div class="row"><button>Save</button><button type="button" class="secondary" id="meta-cancel">Cancel</button></div>
     </form>
-    <a href="#" id="leave" class="leave">↩ other party</a>
     <div class="row wrap header-row">
       <label class="me">Your name <input id="my-name" maxlength="40" placeholder="e.g. Sam" autocomplete="given-name"></label>
-      <button class="secondary" id="copy-link">🔗 Copy invite link</button>
+      <button class="secondary" id="copy-link"><span class="emo">🔗</span>Copy invite link</button>
     </div>
+    <a href="#" id="leave" class="leave">↩ other party</a>
   </header>
 
   <main>
@@ -63,10 +63,10 @@
       <form id="item-form" class="item-form">
         <label>Type
           <select id="item-cat">
-            <option value="sauce">🍅 Sauce</option>
-            <option value="cheese">🧀 Cheese</option>
-            <option value="topping" selected>🍄 Topping</option>
-            <option value="other">🥖 Other</option>
+            <option value="sauce">🍅 Sauce</option>
+            <option value="cheese">🧀 Cheese</option>
+            <option value="topping" selected>🍄 Topping</option>
+            <option value="other">🥖 Other</option>
           </select>
         </label>
         <label>Ingredient
@@ -76,12 +76,21 @@
           <input id="item-amount" maxlength="30" placeholder="e.g. 2 cups">
         </label>
         <label class="f-icon"><span>Pizza icon <span class="opt">(optional)</span></span>
-          <select id="item-icon"><option value="">✨ Auto</option></select>
+          <select id="item-icon"><option value="">✨ Auto</option></select>
         </label>
         <button>Add ＋</button>
       </form>
       <p class="hint">Amounts can be in any unit (2 cups, a handful, lots 🤷). Icons are only needed if a topping looks off on the pizza drawings.</p>
       <div id="items"></div>
+    </section>
+
+    <section>
+      <h2><span class="h-emoji">🥗</span> Dietary needs <small>so every pizza has a fan</small></h2>
+      <form id="diet-form" class="row diet-form">
+        <input id="diet-note" maxlength="80" placeholder="e.g. vegetarian, no mushrooms, nut allergy" required aria-label="Dietary need">
+        <button>Add</button>
+      </form>
+      <ul id="diets" class="list diets"></ul>
     </section>
 
     <section>
@@ -100,6 +109,7 @@
   </main>
 </div>
 
+<footer class="foot">baked with love &amp; extra cheese 🧀</footer>
 <div id="toast" role="status"></div>
 <script type="module" src="app.js"></script>
 </body>
