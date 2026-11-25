@@ -123,10 +123,11 @@ A **Keep screen on** toggle in the Oven section asks the phone not to sleep (Scr
 #### 3. Ratings & awards
 
 - Once a pizza is **Ready**, anyone at the party can rate it **1–5 ⭐** right on its card. One rating per person per pizza, changeable. Shows the average and count.
+- Each person can also tap **🌶️ Most adventurous** on one ready pizza. One pick per person for the whole party; tapping it on another pizza moves it.
 - Ratings stay open until the end of the day after the party, so people who forgot can still rate from the keepsake page.
 - **Awards** show on the keepsake page (after the party), and live during party mode as a preview:
   - 🏆 **Crowd favorite**: highest average rating, at least 2 ratings. Ties go to more ratings, then to whichever was made first.
-  - 🌶️ **Most adventurous**: see "Open question" below.
+  - 🌶️ **Most adventurous**: the pizza with the most 🌶️ picks, at least 2. Ties go to whichever was made first.
 
 ### Keepsake page (after the party)
 
@@ -145,6 +146,7 @@ Same as today, plus: the pizzas that were made, in the order they came out, with
 | `night/prep/$ingredient` | `true` | anyone at the party | from `nightAt` until the party ends |
 | `night/oven/$pizza` | `{ rack, startedAt, minutes, readyAt? }` | anyone at the party | from `nightAt` until the party ends |
 | `ratings/$pizza/$uid` | integer 1–5 | that person only | pizza is ready, until `endsAt` + 1 day |
+| `adventurous/$uid` | a pizza id | that person only | that pizza is ready, until `endsAt` + 1 day |
 
 Notes:
 - `$ingredient` is `ingredientKey(name)` with spaces turned into `_`, so it's a safe database key.
@@ -152,7 +154,7 @@ Notes:
 - `night/oven/$pizza`: `rack` is `"top"` or `"bottom"`; `minutes` 1–60 (bake time plus any +2s); `startedAt` must not be in the future (`<= now`); `readyAt` set when Ready is tapped. Stop deletes the entry. Rack conflicts are prevented in the page (the rules can't compare sibling entries); a clash from two people tapping at the same instant shows both pizzas on the rack, and either can be stopped.
 - **Votes**: the vote rule gains "and (no `nightAt`, or `now < nightAt`)". New pizzas, and deleting pizzas, are also refused after `nightAt` (my call: a pizza vanishing mid-prep would break the queue and prep list). Renaming, toppings and look edits stay allowed as today.
 - **The page's own lock**: `app.js` refuses writes once the party is over (`locked()` in the store wrapper). It needs the same exception as the rules so ratings still save until the end of the next day.
-- **Ratings window**: the general "party is over" lock stays as is. `ratings` gets its own write rule: party member, `$uid === auth.uid`, the pizza's `night/oven/$pizza/readyAt` exists, and `now < endsAt + 86400000`.
+- **Ratings window**: the general "party is over" lock stays as is. `ratings` and `adventurous` get their own write rules: party member, `$uid === auth.uid`, the pizza's `night/oven/$pizza/readyAt` exists, and `now < endsAt + 86400000`.
 - The meta rules must still accept today's parties (no new fields required).
 
 ## Pure helpers (in `lib.js`, unit-tested)
@@ -162,13 +164,13 @@ Notes:
 - `makingList(pizzas, goal, order)`: the pizza ids being made, in order.
 - `prepList(making, pizzas, items)`: `[{ key, name, category, pizzas: [names], bringers: [{ by, amount }], missing }]` grouped by category.
 - `ovenState(entry, now)`: `waiting | baking | check | ready` plus seconds left or over.
-- `awards(made, ratings)`: the award winners.
+- `awards(made, ratings, adventurous)`: the award winners.
 
 ## Testing
 
 - **Unit** (`tests/lib.test.js`): each helper above, including time-zone-safe `nightAt`, an empty goal, a moved pizza, renamed ingredients in the prep list, countdown edges (exactly zero, +2 min after zero), award ties.
-- **Rules** (`tests/rules.emulator.test.js`): votes and new pizzas refused after `nightAt` but fine before and on parties without it; plan, order and notes are host/cohost only; anyone at the party can tick prep and run the oven, only after `nightAt`; bad racks, future `startedAt`, and `minutes` out of range refused; ratings only on ready pizzas, only your own, 1–5, until the end of the next day, refused after that; older parties unaffected.
-- **Browser** (`tests/e2e.browser.js`, demo mode): host sets a time and bake time; host preview shows party mode while a guest sees planning; at the time, the page switches; voting buttons are gone; prep list counts and ticks; start a timer, rack becomes busy, +2 min, zero → Check it!, Ready; rating a ready pizza; keepsake shows the Crowd favorite. Time is controlled in the test by setting `nightAt` relative to now and a short bake time.
+- **Rules** (`tests/rules.emulator.test.js`): votes and new pizzas refused after `nightAt` but fine before and on parties without it; plan, order and notes are host/cohost only; anyone at the party can tick prep and run the oven, only after `nightAt`; bad racks, future `startedAt`, and `minutes` out of range refused; ratings and 🌶️ picks only on ready pizzas, only your own, 1–5 for ratings, until the end of the next day, refused after that; older parties unaffected.
+- **Browser** (`tests/e2e.browser.js`, demo mode): host sets a time and bake time; host preview shows party mode while a guest sees planning; at the time, the page switches; voting buttons are gone; prep list counts and ticks; start a timer, rack becomes busy, +2 min, zero → Check it!, Ready; rating a ready pizza and picking it 🌶️; keepsake shows Crowd favorite and Most adventurous. Time is controlled in the test by setting `nightAt` relative to now and a short bake time.
 
 ## Decided by the host
 
@@ -181,6 +183,7 @@ Notes:
 - At zero: "Check it! 👀", then someone taps Ready or adds 2 minutes; open phones chime or buzz.
 - Busy racks shown as taken.
 - Rate each pizza once it's ready, open until the end of the next day; awards on the keepsake.
+- Most adventurous is voted by guests.
 - Build it all at once, page organized as Prep / Oven / Ratings & awards.
 
 ## My calls (correct any of these)
@@ -192,11 +195,7 @@ Notes:
 - "Start now" in the host preview.
 - "Keep screen on" toggle.
 - A party-mode line under the date for guests, saying when it starts and that voting closes then.
-- Crowd favorite needs at least 2 ratings.
-
-## Open question
-
-- **What makes a pizza "Most adventurous"?** (see the playback message)
+- Crowd favorite needs at least 2 ratings; Most adventurous needs at least 2 picks. One 🌶️ pick per person for the whole party.
 
 ## Left to the builder
 
