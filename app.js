@@ -1,5 +1,5 @@
 import { pieHTML, ICONS, ICON_GROUPS, safeIcon, guessIcon, SAUCE_LOOKS, CHEESE_LOOKS } from "./pie.js";
-import { parseCode, newCode, esc, cleanIds, cohostIds, voteCount, rankPizzas, groupItems, ingredientKey, ingredientIndex, nextAka, totalAmount, partyEndsAt, pizzaGoal, isOver, formatPartyDate, todayISO, localDemo } from "./lib.js";
+import { SAFE_ID, parseCode, newCode, esc, cleanIds, cohostIds, voteCount, rankPizzas, groupItems, ingredientKey, ingredientIndex, nextAka, totalAmount, partyEndsAt, pizzaGoal, isOver, formatPartyDate, nightFields, isNight, todayISO, localDemo } from "./lib.js";
 import { morph } from "./morph.js";
 
 const CATS = { sauce: "Sauces", cheese: "Cheeses", topping: "Toppings", other: "Dough, drinks and more" };
@@ -53,7 +53,12 @@ async function firebaseDb() {
       fb.onValue(fb.ref(d, p), (s) => cb(s.val() || {}), (err) => (onError ? onError(err) : toast("Couldn't load: " + err.message))),
     add: (p, obj) => fb.push(fb.ref(d, p), obj),
     set: (p, val) => fb.set(fb.ref(d, p), val),
+    // The server's clock, so every phone's oven timers agree
+    now: () => Date.now() + offset,
+    stamp: () => fb.serverTimestamp(),
   };
+  let offset = 0;
+  fb.onValue(fb.ref(d, ".info/serverTimeOffset"), (s) => (offset = Number(s.val()) || 0));
   if (!firebaseConfig.apiKey) return api; // sign-in not set up yet (see config.js)
   const au = await import(`${base}/firebase-auth.js`);
   const auth = au.getAuth(app);
@@ -90,6 +95,9 @@ function localDb() {
     watch: (p, cb) => { watchers.push([p, cb]); cb(get(p) || {}); },
     add: (p, obj) => set(`${p}/${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, obj),
     set,
+    // localStorage.clockSkew lets the browser tests move time forward
+    now: () => Date.now() + Number(localStorage.clockSkew || 0),
+    stamp: () => Date.now() + Number(localStorage.clockSkew || 0),
   };
 }
 
@@ -142,6 +150,7 @@ function showGate() {
     location.hash = c;
   });
   $("new-date").min = todayISO();
+  nightToggle("new");
   $("new-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const c = newCode();
@@ -152,6 +161,7 @@ function showGate() {
         uid,
         createdAt: Date.now(),
         ...dateFields($("new-date").value),
+        ...nightFields($("new-date").value, $("new-night-time").value, $("new-bake").value),
       });
     } catch (err) {
       console.error(err);
@@ -181,6 +191,8 @@ function startParty(code) {
   const over = () => isOver(state.meta);
   const locked = (p) => {
     if (!over() || p.startsWith("meta") || p.startsWith("guests") || p.startsWith("cohosts")) return false;
+    // Ratings and 🌶️ picks stay open until the end of the next day (the rules check that too)
+    if ((p.startsWith("ratings/") || p.startsWith("adventurous/")) && db.now() < state.meta.endsAt + 86400000) return false;
     toast("This party's over, so it can't change anymore 🍕");
     return true;
   };
@@ -301,7 +313,10 @@ function startParty(code) {
     location.reload();
   });
 
-  let state = { meta: {}, items: {}, pizzas: {}, diets: {}, people: {}, guests: {}, cohosts: [] };
+  let state = { meta: {}, items: {}, pizzas: {}, diets: {}, people: {}, guests: {}, cohosts: [], night: cleanNight(), ratings: {}, adventurous: {} };
+  // Party mode: from the host's start time until the party's over. Voting closes then.
+  const night = () => isNight(state.meta, db.now());
+  const voting = () => !over() && !night();
   // The host made the party. Cohosts (picked by the host) can change its settings and guest list too.
   const isOwner = () => state.meta.uid === uid;
   const canManage = () => isOwner() || state.cohosts.includes(uid);
@@ -402,7 +417,13 @@ function startParty(code) {
     const done = over();
     const when = formatPartyDate(state.meta.date);
     $("party-date").hidden = !when;
-    $("party-date").textContent = when;
+    const starts = typeof state.meta.nightAt === "number" && !done && !night()
+      ? ` · 🔥 Party mode starts at ${new Date(state.meta.nightAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. Voting closes then.`
+      : "";
+    $("party-date").textContent = when + starts;
+    $("pizza-form").hidden = night();
+    $("voting-closed").hidden = !night();
+    $("party").classList.toggle("is-night", night());
     $("party").classList.toggle("is-over", done);
     $("party-over").hidden = !done;
     $("over-host").hidden = !done || !isHost;
@@ -423,8 +444,9 @@ function startParty(code) {
   let wrapTimer;
   function scheduleWrapUp() {
     clearTimeout(wrapTimer);
-    const left = (state.meta.endsAt || 0) - Date.now();
-    if (left > 0 && left < 2 ** 31 - 1) wrapTimer = setTimeout(render, left + 500);
+    // ...and the moment party mode starts
+    const next = [state.meta.nightAt, state.meta.endsAt].map((t) => (t || 0) - db.now()).filter((t) => t > 0 && t < 2 ** 31 - 1);
+    if (next.length) wrapTimer = setTimeout(render, Math.min(...next) + 500);
   }
   document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && state.meta.title && render());
 
@@ -710,7 +732,7 @@ function startParty(code) {
             const heading = `<h3>${esc(p.name)}</h3>${done ? "" : `<div class="pizza-tools">
                      <button class="ghost icon-btn" data-edit-pizza="${id}" aria-label="Edit ${esc(p.name)}" aria-expanded="${editing}" data-tip="Edit"><span>✏️</span></button>
                      ${p.uid === uid ? delBtn("pizza", id) : ""}</div>`}`;
-            const voteBtn = `<button class="vote ${mine ? "on" : ""}" data-vote="${id}" aria-pressed="${mine}" ${done ? "disabled" : ""} aria-label="${done ? `${count} vote${count === 1 ? "" : "s"}` : mine ? "Remove your vote" : "Vote for this one"}">${done ? "" : `<span class="box" aria-hidden="true">${mine ? "✓" : ""}</span>${mine ? "Voted" : "Vote"}`}<b>${count}</b></button>`;
+            const voteBtn = `<button class="vote ${mine ? "on" : ""}" data-vote="${id}" aria-pressed="${mine}" ${done || night() ? "disabled" : ""} aria-label="${done ? `${count} vote${count === 1 ? "" : "s"}` : mine ? "Remove your vote" : "Vote for this one"}">${done ? "" : `<span class="box" aria-hidden="true">${mine ? "✓" : ""}</span>${mine ? "Voted" : "Vote"}`}<b>${count}</b></button>`;
             return `<div class="pizza ${lead ? "leader" : ""}" data-key="${id}">
               <div class="plate">${lead ? '<span class="crown" role="img" aria-label="Most votes">👑</span>' : ""}${pieHTML(pieItems, pieLook)}</div>
               <div class="body">
@@ -817,6 +839,9 @@ function startParty(code) {
       $("meta-title").value = state.meta.title || "";
       $("meta-details").value = state.meta.details || "";
       $("meta-date").value = state.meta.date || "";
+      $("meta-night-time").value = state.meta.nightTime || "";
+      $("meta-bake").value = state.meta.bakeMinutes || "";
+      $("meta-night").hidden = !$("meta-date").value;
       $("meta-goal").value = pizzaGoal(state.meta) || "";
       renderCohostPicker();
       $("meta-title").focus();
@@ -833,6 +858,7 @@ function startParty(code) {
       .join("");
   }
   $("edit-meta").addEventListener("click", () => showMetaForm(true));
+  nightToggle("meta");
   $("reopen").addEventListener("click", () => { showMetaForm(true); $("meta-date").focus(); });
   $("meta-cancel").addEventListener("click", () => showMetaForm(false));
   $("meta-form").addEventListener("submit", async (e) => {
@@ -845,8 +871,8 @@ function startParty(code) {
     const goal = pizzaGoal({ pizzaGoal: Number(goalText) });
     if (goalText && !goal) return toast("Pick a number of pizzas from 1 to 50");
     const wasOver = over();
-    const { date: _d, endsAt: _e, pizzaGoal: _g, ...rest } = state.meta;
-    await store.set("meta", { ...rest, title, details: $("meta-details").value.trim().slice(0, 200), ...dateFields(date), ...(goal && { pizzaGoal: goal }) });
+    const { date: _d, endsAt: _e, pizzaGoal: _g, nightTime: _t, nightAt: _n, bakeMinutes: _b, ...rest } = state.meta;
+    await store.set("meta", { ...rest, title, details: $("meta-details").value.trim().slice(0, 200), ...dateFields(date), ...nightFields(date, $("meta-night-time").value, $("meta-bake").value), ...(goal && { pizzaGoal: goal }) });
     if (isOwner()) {
       for (const box of document.querySelectorAll("#cohost-chips [data-cohost]")) {
         const id = box.dataset.cohost;
@@ -916,7 +942,7 @@ function startParty(code) {
     if (!b) return;
     if (b.dataset.vote) {
       const by = myName();
-      if (!by) return;
+      if (!by || !voting()) return;
       const id = b.dataset.vote;
       await store.set(`pizzas/${id}/votes/${uid}`, state.pizzas[id]?.votes?.[uid] ? null : by);
     } else if (b.dataset.editPizza) {
@@ -1000,9 +1026,14 @@ function startParty(code) {
     if (loading) return;
     loading = true;
     db.watch(`${ROOT}/cohosts`, (data) => { state.cohosts = cohostIds(data); watchGuests(); render(); }, () => {});
-    for (const part of ["items", "pizzas", "diets"]) {
+    for (const part of ["items", "pizzas", "diets", "ratings"]) {
       db.watch(`${ROOT}/${part}`, (data) => { state[part] = cleanIds(data); render(); }, blocked);
     }
+    db.watch(`${ROOT}/night`, (data) => { state.night = cleanNight(data); render(); }, blocked);
+    db.watch(`${ROOT}/adventurous`, (data) => {
+      state.adventurous = Object.fromEntries(Object.entries(data || {}).filter(([k, v]) => SAFE_ID.test(k) && typeof v === "string" && SAFE_ID.test(v)));
+      render();
+    }, blocked);
     db.watch(`${ROOT}/people`, (data) => {
       state.people = cleanIds(data);
       renderPeople();
@@ -1018,6 +1049,26 @@ function byLine(by, lovers) {
   if (!lovers.length) return `Proposed by ${esc(by)}`;
   if (lovers.length === 1 && lovers[0] === by) return `Proposed and voted by ${esc(by)}`;
   return `Proposed by ${esc(by)}, voted by ${esc(and(lovers))}`;
+}
+
+// Party mode's start time and bake time only make sense with a date: show them once one's picked
+function nightToggle(pre) {
+  const show = () => ($(`${pre}-night`).hidden = !$(`${pre}-date`).value);
+  $(`${pre}-date`).addEventListener("input", show);
+  $(`${pre}-date`).addEventListener("change", show);
+}
+
+// Party mode data, with anything odd dropped
+function cleanNight(n) {
+  n = n && typeof n === "object" ? n : {};
+  const obj = (o) => (o && typeof o === "object" ? o : {});
+  return {
+    plan: typeof n.plan === "string" ? n.plan : "",
+    order: Object.values(obj(n.order)).filter((id) => typeof id === "string" && SAFE_ID.test(id)),
+    notes: Object.fromEntries(Object.entries(obj(n.notes)).filter(([k, v]) => SAFE_ID.test(k) && typeof v === "string")),
+    prep: Object.fromEntries(Object.entries(obj(n.prep)).filter(([k, v]) => /^[a-z0-9_]{1,60}$/.test(k) && v === true)),
+    oven: cleanIds(n.oven),
+  };
 }
 
 function dateFields(date) {

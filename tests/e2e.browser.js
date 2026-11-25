@@ -294,3 +294,38 @@ check("✏️ edits a pizza's name, toppings and look; toppings lock for its mak
   assert.deepEqual((await saved()).pizzas.z1.picks.sort(), ["Fresh basil", "Mozzarella", "Wild mushrooms"]);
   assert.equal((await saved()).pizzas.z1.name, "Fungi Forever", "the name stays");
 });
+
+check("the host schedules party mode, and voting closes at the start time", async () => {
+  const party = basicParty();
+  party.pizzas = { z1: { name: "Basil Instinct", by: "Nicole", uid: "nicole", createdAt: 1, picks: ["Tomato sauce", "Mozzarella"], votes: { nicole: "Nicole" } } };
+  await open(party, "nicole", "Nicole");
+  await click("#edit-meta");
+  await fill("#meta-date", "");
+  assert.equal(await visible("#meta-night-time"), false, "party mode needs a date first");
+  const day = isoDay(1);
+  await fill("#meta-date", day);
+  assert.equal(await visible("#meta-night-time"), true);
+  await fill("#meta-night-time", "16:00");
+  await fill("#meta-bake", "10");
+  await submit("#meta-form");
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].meta.nightTime === "16:00"`, "party mode saved");
+  const [y, m, d] = day.split("-").map(Number);
+  const meta = (await saved()).meta;
+  assert.equal(meta.nightAt, new Date(y, m - 1, d, 16).getTime());
+  assert.equal(meta.bakeMinutes, 10);
+  assert.match(await text("#party-date"), /Party mode starts at/);
+
+  // Once it starts, voting and new pizzas stop; the tally stays
+  const started = { ...party, meta: { ...meta, nightAt: Date.now() - 60000, date: isoDay(0), endsAt: endOf(isoDay(0)) } };
+  await open(started, "matt", "Matt");
+  assert.equal(await js(`[...document.querySelectorAll("#pizzas [data-vote]")].some((b) => !b.disabled)`), false, "no voting");
+  assert.match(await text("#propose-section"), /Voting closed: it's party time/);
+  assert.equal(await js(`!!document.querySelector("#propose-section #pizza-form:not([hidden])")`), false, "no pizza builder");
+  assert.equal(await visible("#tally-section"), true);
+
+  // Before it starts, voting works
+  const soon = { ...party, meta: { ...meta, nightAt: Date.now() + 60000, date: isoDay(0), endsAt: endOf(isoDay(0)) } };
+  await open(soon, "matt", "Matt");
+  await js(`document.querySelector("#pizzas [data-vote]").click(); true`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].pizzas.z1.votes.matt`, "a vote before party mode");
+});

@@ -62,6 +62,14 @@
         <label class="date-field">Party date <span class="opt">(optional: after this day the party wraps up and the page becomes a keepsake)</span>
           <input type="date" id="new-date">
         </label>
+        <div class="night-fields" id="new-night" hidden>
+          <label class="date-field">Party mode starts at <span class="opt">(optional: when prep starts. Voting closes then)</span>
+            <input type="time" id="new-night-time">
+          </label>
+          <label class="date-field">Bake time (minutes) <span class="opt">(optional: for the oven timers, 8 if empty)</span>
+            <input type="number" id="new-bake" min="1" max="30" step="1" inputmode="numeric" placeholder="8">
+          </label>
+        </div>
         <button>Create party</button>
       </form>
     </section>
@@ -89,6 +97,14 @@
       <label class="date-field">Party date <span class="opt">(optional: leave empty to keep it open)</span>
         <input type="date" id="meta-date">
       </label>
+      <div class="night-fields" id="meta-night" hidden>
+        <label class="date-field">Party mode starts at <span class="opt">(optional: when prep starts. Voting closes then)</span>
+          <input type="time" id="meta-night-time">
+        </label>
+        <label class="date-field">Bake time (minutes) <span class="opt">(optional: for the oven timers, 8 if empty)</span>
+          <input type="number" id="meta-bake" min="1" max="30" step="1" inputmode="numeric" placeholder="8">
+        </label>
+      </div>
       <label class="date-field">How many pizzas are we making? <span class="opt">(optional: the ones with the most votes get made)</span>
         <input type="number" id="meta-goal" min="1" max="50" step="1" inputmode="numeric" placeholder="4">
       </label>
@@ -168,6 +184,7 @@
         <div><h2><span class="h-emoji" aria-hidden="true">👩‍🍳</span>Build a pizza</h2><p class="lede">Pick from what people are bringing.</p></div>
         <div id="preview-pie" class="preview-pie" aria-hidden="true"></div>
       </div>
+      <p id="voting-closed" class="lede voting-closed" hidden>Voting closed: it's party time 🔥</p>
       <form id="pizza-form">
         <input id="pizza-name" maxlength="60" placeholder="Name your pizza, like The Basil Instinct" required aria-label="Pizza name">
         <div id="builder"></div>

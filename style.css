@@ -164,6 +164,9 @@ button.link:hover { background: none; color: var(--red-dark); }
 .not-host p + p { margin-top: 4px; font-size: .9rem; }
 .date-field { display: grid; gap: 4px; font-size: .85rem; font-weight: 700; color: var(--muted); }
 .date-field input { font-weight: 400; }
+.night-fields { display: grid; gap: 10px; }
+.night-fields[hidden] { display: none; }
+.voting-closed { font-weight: 700; }
 .cohost-field { margin: 0; padding: 0; border: 0; min-width: 0; font-size: .85rem; font-weight: 700; color: var(--muted); }
 .cohost-field legend { padding: 0; margin-bottom: 4px; }
 .cohost-field legend .opt { display: block; margin-top: 4px; }
