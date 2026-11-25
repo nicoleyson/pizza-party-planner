@@ -269,3 +269,117 @@ test("renamed ingredients keep their old names, and the host fixes any pizza's t
   await denied(put(`${P}/pizzas/gp/picks`, "Anchovies", host), "toppings as text");
   await denied(put(`${P}/pizzas/nope/picks`, ["Basil"], host), "a pizza that doesn't exist");
 });
+
+// ── Party mode ──
+const HOUR = 60 * 60 * 1000;
+const nightParty = (nightIn, endsIn = 10 * HOUR) => {
+  const date = isoDate(Date.now() + endsIn - DAY / 2);
+  return {
+    meta: { ...oldMeta, date, endsAt: Date.now() + endsIn, nightTime: "16:00", nightAt: Date.now() + nightIn, bakeMinutes: 8 },
+    cohosts: { [cohost.uid]: true },
+    people: { [cohost.uid]: { name: "Cohost", joinedAt: 1 }, [guest.uid]: { name: "Guest", joinedAt: 2 } },
+    pizzas: {
+      np1: { name: "Ready one", by: "Guest", uid: guest.uid, createdAt: 1, picks: ["Basil"], votes: { [guest.uid]: "Guest" } },
+      np2: { name: "Not yet", by: "Guest", uid: guest.uid, createdAt: 2, picks: ["Basil"], votes: { [guest.uid]: "Guest" } },
+    },
+    night: { oven: { np1: { rack: "top", startedAt: Date.now() - HOUR, minutes: 8, readyAt: Date.now() - HOUR / 2 } } },
+  };
+};
+function isoDate(ms) { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+
+test("party mode: voting and new pizzas stop at the start time", { skip }, async () => {
+  const P = "parties/nightparty-abc1";
+  await allowed(put(P, nightParty(-HOUR), "admin"), "seed");
+  await denied(put(`${P}/pizzas/np2/votes/${cohost.uid}`, "Cohost", cohost), "vote after party mode starts");
+  await denied(put(`${P}/pizzas/late`, pizza(guest), guest), "propose a pizza after it starts");
+  await denied(del(`${P}/pizzas/np2`, guest), "delete your own pizza after it starts");
+  await allowed(put(`${P}/pizzas/np2/picks`, ["Basil", "Garlic"], host), "the host can still change toppings");
+  await allowed(put(`${P}/pizzas/np2/name`, "Renamed", guest), "renaming still works");
+  const S = "parties/nightsoon-abc1";
+  await allowed(put(S, nightParty(HOUR), "admin"), "seed");
+  await allowed(put(`${S}/pizzas/np2/votes/${cohost.uid}`, "Cohost", cohost), "vote before it starts");
+  await denied(put(`${S}/night/prep/basil`, true, guest), "no prep ticks before it starts");
+  await denied(put(`${S}/night/oven/np2`, { rack: "top", startedAt: Date.now() - 1000, minutes: 8 }, guest), "no oven before it starts");
+  await allowed(put(`parties/${OLD}/pizzas/oldpizza/votes/${cohost.uid}`, "Cohost", cohost), "parties without party mode vote as before");
+});
+
+test("party mode: the plan, order and prep notes are the host's", { skip }, async () => {
+  const P = "parties/nightplan-abc1";
+  await allowed(put(P, nightParty(HOUR), "admin"), "seed");
+  await allowed(put(`${P}/night/plan`, "Oven to 500° at 6\nDamian on toppings", host), "host writes the plan");
+  await allowed(put(`${P}/night/plan`, "Cohost edit", cohost), "so can a cohost");
+  await denied(put(`${P}/night/plan`, "Guest edit", guest), "not a guest");
+  await denied(put(`${P}/night/plan`, "x".repeat(1001), host), "plan too long");
+  await allowed(put(`${P}/night/order`, ["np2", "np1"], host), "host moves a pizza");
+  await denied(put(`${P}/night/order`, ["np2"], guest), "not a guest");
+  await denied(put(`${P}/night/order`, ["bad id!"], host), "odd ids");
+  await allowed(put(`${P}/night/notes/np1`, "basil after baking", cohost), "prep note");
+  await denied(put(`${P}/night/notes/np1`, "mine", guest), "guests can't write prep notes");
+  await denied(put(`${P}/night/notes/np1`, "x".repeat(201), host), "note too long");
+  await denied(put(`${P}/night/sneaky`, true, host), "nothing else under night");
+  await allowed(get(`${P}/night`, guest), "everyone at the party can read it");
+  await denied(get(`${P}/night`, unverified), "unverified accounts can't");
+});
+
+test("party mode: anyone at the party ticks prep and runs the oven", { skip }, async () => {
+  const P = "parties/nightoven-abc1";
+  await allowed(put(P, nightParty(-HOUR), "admin"), "seed");
+  await allowed(put(`${P}/night/prep/roasted_turkey`, true, guest), "tick prep");
+  await allowed(del(`${P}/night/prep/roasted_turkey`, guest), "untick it");
+  await denied(put(`${P}/night/prep/Roasted Turkey`, true, guest), "odd key");
+  await denied(put(`${P}/night/prep/basil`, "yes", guest), "only true");
+  const oven = { rack: "top", startedAt: Date.now() - 1000, minutes: 8 };
+  await allowed(put(`${P}/night/oven/np2`, oven, guest), "start a timer");
+  await allowed(put(`${P}/night/oven/np2`, { ...oven, startedAt: { ".sv": "timestamp" } }, guest), "with the server's clock");
+  await allowed(put(`${P}/night/oven/np2/minutes`, 10, guest), "+2 min");
+  await allowed(put(`${P}/night/oven/np2/readyAt`, { ".sv": "timestamp" }, guest), "ready");
+  await allowed(del(`${P}/night/oven/np2`, guest), "stop");
+  await denied(put(`${P}/night/oven/np2`, { ...oven, rack: "middle" }, guest), "no middle rack");
+  await denied(put(`${P}/night/oven/np2`, { ...oven, startedAt: Date.now() + 60000 }, guest), "start time in the future");
+  await denied(put(`${P}/night/oven/np2`, { ...oven, minutes: 61 }, guest), "over an hour");
+  await denied(put(`${P}/night/oven/np2`, { ...oven, minutes: 0 }, guest), "zero minutes");
+  await denied(put(`${P}/night/oven/np2`, { ...oven, extra: 1 }, guest), "extra field");
+  await denied(put(`${P}/night/oven/nope`, oven, guest), "a pizza that doesn't exist");
+  await denied(put(`${P}/night/oven/np2`, oven, unverified), "unverified accounts can't");
+});
+
+test("party mode: ratings and 🌶️ picks on ready pizzas, until the end of the next day", { skip }, async () => {
+  const P = "parties/nightrate-abc1";
+  await allowed(put(P, nightParty(-HOUR), "admin"), "seed");
+  await allowed(put(`${P}/ratings/np1/${guest.uid}`, 4, guest), "rate a ready pizza");
+  await allowed(put(`${P}/ratings/np1/${guest.uid}`, 5, guest), "change it");
+  await denied(put(`${P}/ratings/np2/${guest.uid}`, 4, guest), "not out of the oven yet");
+  await denied(put(`${P}/ratings/np1/${host.uid}`, 4, guest), "someone else's rating");
+  await denied(put(`${P}/ratings/np1/${guest.uid}`, 6, guest), "6 stars");
+  await denied(put(`${P}/ratings/np1/${guest.uid}`, 4.5, guest), "half stars");
+  await allowed(put(`${P}/adventurous/${guest.uid}`, "np1", guest), "🌶️ a ready pizza");
+  await allowed(del(`${P}/adventurous/${guest.uid}`, guest), "take it back");
+  await denied(put(`${P}/adventurous/${guest.uid}`, "np2", guest), "not ready");
+  await denied(put(`${P}/adventurous/${host.uid}`, "np1", guest), "someone else's pick");
+  await allowed(get(`${P}/ratings`, guest), "everyone sees ratings");
+  const A = "parties/nightafter-abc1";
+  await allowed(put(A, nightParty(-20 * HOUR, -HOUR), "admin"), "seed: ended an hour ago");
+  await allowed(put(`${A}/ratings/np1/${guest.uid}`, 4, guest), "still rate the morning after");
+  await allowed(put(`${A}/adventurous/${guest.uid}`, "np1", guest), "and pick");
+  await denied(put(`${A}/night/oven/np2`, { rack: "top", startedAt: Date.now() - 1000, minutes: 8 }, guest), "but the oven is closed");
+  await denied(put(`${A}/night/prep/basil`, true, guest), "and prep");
+  const L = "parties/nightlate-abc1";
+  await allowed(put(L, nightParty(-40 * HOUR, -25 * HOUR), "admin"), "seed: ended 25 hours ago");
+  await denied(put(`${L}/ratings/np1/${guest.uid}`, 4, guest), "too late to rate");
+  await denied(put(`${L}/adventurous/${guest.uid}`, "np1", guest), "too late to pick");
+});
+
+test("party mode settings on the party", { skip }, async () => {
+  const P = "parties/nightmeta-abc1";
+  await allowed(put(P, { meta: datedMeta(Date.now() + DAY) }, "admin"), "seed");
+  const base = datedMeta(Date.now() + DAY);
+  await allowed(put(`${P}/meta`, { ...base, nightTime: "16:00", nightAt: Date.now() + HOUR, bakeMinutes: 8 }, host), "turn party mode on");
+  await allowed(put(`${P}/meta`, base, host), "and off");
+  const { date: _d, endsAt: _e, ...undated } = base;
+  await denied(put(`${P}/meta`, { ...undated, nightTime: "16:00", nightAt: Date.now() }, host), "needs a party date");
+  await denied(put(`${P}/meta`, { ...base, nightTime: "4pm", nightAt: Date.now() }, host), "time like 16:00");
+  await denied(put(`${P}/meta`, { ...base, nightTime: "16:00" }, host), "time needs its timestamp");
+  await denied(put(`${P}/meta`, { ...base, nightAt: Date.now() }, host), "timestamp needs its time");
+  await denied(put(`${P}/meta`, { ...base, bakeMinutes: 31 }, host), "bake time over 30");
+  await denied(put(`${P}/meta`, { ...base, bakeMinutes: 0 }, host), "bake time 0");
+});
