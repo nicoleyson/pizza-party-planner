@@ -219,3 +219,33 @@ export function prepList(makingIds, pizzas, items) {
   const rank = (c) => { const i = PREP_ORDER.indexOf(c); return i < 0 ? 99 : i; };
   return [...out.values()].sort((a, b) => rank(a.category) - rank(b.category) || a.name.localeCompare(b.name));
 }
+
+// Where a pizza is in the oven. Timers save a start time and a length, so every phone
+// counts down on its own: waiting -> baking (secs left) -> check (secs over) -> ready.
+export function ovenState(entry, now) {
+  if (!entry || typeof entry !== "object") return { state: "waiting", secs: 0 };
+  if (typeof entry.readyAt === "number") return { state: "ready", secs: 0 };
+  const left = entry.startedAt + entry.minutes * 60000 - now;
+  return left > 0 ? { state: "baking", secs: Math.ceil(left / 1000) } : { state: "check", secs: Math.floor(Math.abs(left) / 1000) };
+}
+
+// 312 -> "5:12"
+export const clock = (secs) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
+
+// 🏆 Crowd favorite (best average, 2+ ratings) and 🌶️ Most adventurous (most picks, 2+).
+// Only pizzas that came out of the oven count. Ties go to more ratings, then whichever came out first.
+export function awards(pizzas, oven, ratings, adventurous) {
+  const made = Object.keys(pizzas || {}).filter((id) => typeof oven?.[id]?.readyAt === "number");
+  const out = oven || {};
+  const avg = {};
+  for (const id of made) {
+    const stars = Object.values(ratings?.[id] || {}).filter((n) => Number.isInteger(n) && n >= 1 && n <= 5);
+    if (stars.length) avg[id] = { avg: stars.reduce((a, b) => a + b, 0) / stars.length, n: stars.length };
+  }
+  const earlier = (a, b) => out[a].readyAt - out[b].readyAt;
+  const crowd = made.filter((id) => avg[id]?.n >= 2).sort((a, b) => avg[b].avg - avg[a].avg || avg[b].n - avg[a].n || earlier(a, b))[0] ?? null;
+  const picks = {};
+  for (const id of Object.values(adventurous || {})) if (made.includes(id)) picks[id] = (picks[id] || 0) + 1;
+  const spicy = Object.keys(picks).filter((id) => picks[id] >= 2).sort((a, b) => picks[b] - picks[a] || earlier(a, b))[0] ?? null;
+  return { crowd, adventurous: spicy, avg, picks };
+}

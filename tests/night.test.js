@@ -66,3 +66,43 @@ test("prepList says what to prep, for how many pizzas and which", () => {
   const twins = { A: pz("Margherita", 2, 1, ["Mozzarella"]), B: pz("Margherita", 1, 2, ["Mozzarella"]) };
   assert.deepEqual(prepList(["A", "B"], twins, items)[0].pizzas, ["Margherita", "Margherita"], "two pizzas with the same name count twice");
 });
+
+test("ovenState: baking, check it, ready", async () => {
+  const { ovenState } = await import("../lib.js");
+  const e = { rack: "top", startedAt: 0, minutes: 8 };
+  assert.deepEqual(ovenState(e, 60000), { state: "baking", secs: 420 });
+  assert.deepEqual(ovenState(e, 59500), { state: "baking", secs: 421 }, "rounds the time left up");
+  assert.deepEqual(ovenState(e, 480000), { state: "check", secs: 0 }, "exactly at zero");
+  assert.deepEqual(ovenState(e, 520000), { state: "check", secs: 40 });
+  assert.deepEqual(ovenState({ ...e, minutes: 10 }, 520000), { state: "baking", secs: 80 }, "+2 min after zero bakes again");
+  assert.deepEqual(ovenState({ ...e, readyAt: 500000 }, 600000), { state: "ready", secs: 0 });
+  assert.deepEqual(ovenState(undefined, 1), { state: "waiting", secs: 0 });
+});
+
+test("clock shows minutes and seconds", async () => {
+  const { clock } = await import("../lib.js");
+  assert.equal(clock(312), "5:12");
+  assert.equal(clock(7), "0:07");
+  assert.equal(clock(720), "12:00");
+});
+
+test("awards: crowd favorite and most adventurous", async () => {
+  const { awards } = await import("../lib.js");
+  const ready = (t) => ({ rack: "top", startedAt: 0, minutes: 8, readyAt: t });
+  const oven = { P1: ready(1), P2: ready(2), P3: ready(3), P5: ready(5), P6: ready(6) };
+  const pizzas = Object.fromEntries(["P1", "P2", "P3", "P4", "P5", "P6"].map((id) => [id, { name: id }]));
+  const ratings = { P1: { a: 5, b: 4 }, P2: { a: 5, b: 5 }, P3: { a: 5 }, P4: { a: 5, b: 5 } };
+  const r = awards(pizzas, oven, ratings, { a: "P1", b: "P1", c: "P2" });
+  assert.equal(r.crowd, "P2");
+  assert.equal(r.adventurous, "P1");
+  assert.deepEqual(r.avg.P1, { avg: 4.5, n: 2 });
+  assert.equal(r.avg.P4, undefined, "not out of the oven, so it doesn't count");
+  // A tie on the average goes to more ratings, then to whichever came out first
+  assert.equal(awards(pizzas, oven, { P5: { a: 5, b: 4 }, P6: { a: 5, b: 4, c: 4.5 } }, {}).crowd, "P5", "4.5 isn't a valid rating");
+  assert.equal(awards(pizzas, oven, { P5: { a: 5, b: 4 }, P6: { a: 4, b: 5, c: 4, d: 5 } }, {}).crowd, "P6", "more ratings wins a tie");
+  assert.equal(awards(pizzas, oven, { P6: { a: 5, b: 4 }, P5: { a: 4, b: 5 } }, {}).crowd, "P5", "then the earlier one");
+  assert.equal(awards(pizzas, oven, { P1: { a: 7, b: 5 } }, {}).crowd, null, "7 is ignored, leaving one rating");
+  assert.equal(awards(pizzas, oven, {}, { a: "P1" }).adventurous, null, "needs 2 picks");
+  assert.equal(awards(pizzas, oven, {}, { a: "P6", b: "P6", c: "P5", d: "P5" }).adventurous, "P5", "a tie goes to the earlier one");
+  assert.equal(awards(pizzas, oven, {}, { a: "P4", b: "P4" }).adventurous, null, "only ready pizzas");
+});
