@@ -595,8 +595,18 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .prep-cat h4 { margin: 12px 0 6px; font-size: .9rem; display: flex; align-items: center; gap: 6px; }
 .prep-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .prep-list label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
-.prep-list input { width: 20px; height: 20px; min-height: 0; margin-top: 2px; flex: none; }
+.prep-list label input { width: 20px; height: 20px; min-height: 0; margin-top: 2px; flex: none; }
 .prep-what { display: grid; gap: 1px; }
+.prep-list > li { display: grid; grid-template-columns: 1fr auto; align-items: start; column-gap: 6px; }
+.prep-list > li > .prep-note, .prep-list > li > .note-form { grid-column: 1 / -1; margin-left: 30px; }
+.prep-list > li > .note-form input { min-width: 120px; }
+.prep-note-btn { margin-top: -6px; }
+.making-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 18px 0 8px; }
+.making-title h3 { margin: 0; }
+.count-step { display: inline-flex; align-items: center; gap: 4px; }
+.count-step b { min-width: 1.6em; text-align: center; font-size: 1.05rem; }
+.add-pizza { margin: 10px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.add-pizza small { color: var(--muted); }
 .prep-n { font-size: .9rem; }
 .prep-who { color: var(--muted); }
 .prep-missing { color: var(--red); font-weight: 700; }

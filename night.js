@@ -8,6 +8,7 @@ export function initNight(ctx) {
   let previewing = false; // a host looking ahead (never saved)
   let editingPlan = false;
   let editingNote = null; // pizza id
+  let editingIng = null; // prep list key
 
   const isShowing = () => ctx.night() || (previewing && ctx.canManage() && !ctx.over() && typeof state.meta.nightAt === "number");
   const timeOf = (ms) => new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -41,7 +42,10 @@ export function initNight(ctx) {
     const planDraft = el.querySelector("[data-plan-form] textarea")?.value;
     const noteForm = el.querySelector("[data-note-form]");
     const noteDraft = noteForm?.dataset.noteForm === editingNote ? noteForm.querySelector("input")?.value : undefined;
-    const hadFocus = el.contains(document.activeElement) ? document.activeElement.closest("form")?.matches("[data-plan-form]") ? "plan" : "note" : null;
+    const ingForm = el.querySelector("[data-ing-form]");
+    const ingDraft = ingForm?.dataset.ingForm === editingIng ? ingForm.querySelector("input")?.value : undefined;
+    const focusForm = el.contains(document.activeElement) ? document.activeElement.closest("form") : null;
+    const hadFocus = !focusForm ? null : focusForm.matches("[data-plan-form]") ? "plan" : focusForm.matches("[data-ing-form]") ? "ing" : "note";
     const all = ordered();
     const made = making();
     const plan = state.night.plan;
@@ -78,13 +82,20 @@ export function initNight(ctx) {
           return `<div class="prep-cat" data-key="pc-${cat}"><h4><span class="emo">${ctx.EMOJI[cat]}</span>${ctx.CATS[cat]}</h4><ul class="prep-list">${list
             .map((r) => {
               const got = !!state.night.prep[r.key];
+              const ingNote = state.night.ingNotes[r.key];
+              const ingNoteHTML = editingIng === r.key && host
+                ? `<form class="note-form" data-ing-form="${r.key}"><input maxlength="200" value="${esc(ingDraft ?? ingNote ?? "")}" aria-label="Prep note for ${esc(r.name)}" placeholder="Shred it, slice it thin, warm it up…"><button>Save</button><button type="button" class="secondary" data-cancel-ing>Cancel</button></form>`
+                : ingNote ? `<p class="prep-note">📝 ${esc(ingNote)}</p>` : "";
+              const ingTool = host && editingIng !== r.key
+                ? `<button type="button" class="ghost icon-btn prep-note-btn" data-edit-ing="${r.key}" aria-label="Prep note for ${esc(r.name)}" data-tip="Prep note"><span>📝</span></button>`
+                : "";
               const who = r.missing
                 ? `<span class="prep-missing">nobody's bringing this ⚠️</span>`
                 : esc(r.bringers.map((b) => (b.amount ? `${b.by}, ${b.amount}` : b.by)).join(" · "));
               return `<li data-prep-row="${r.key}" data-key="pr-${r.key}"><label class="${got ? "got" : ""}">
                 <input type="checkbox" data-prep="${r.key}" ${got ? "checked" : ""} ${ctx.night() ? "" : "disabled title=\"Ticks start when party mode does\""}>
                 <span class="prep-what"><b>${esc(r.name)}</b> <span class="prep-n">${r.pizzas.length} pizza${r.pizzas.length === 1 ? "" : "s"}: ${esc(r.pizzas.join(", "))}</span>
-                <small class="prep-who">${who}</small></span></label></li>`;
+                <small class="prep-who">${who}</small></span></label>${ingTool}${ingNoteHTML}</li>`;
             })
             .join("")}</ul></div>`;
         }).join("")
@@ -92,12 +103,25 @@ export function initNight(ctx) {
 
     morph(el, `<h2 data-key="h"><span class="h-emoji" aria-hidden="true">🔪</span>Prep</h2>
       <div class="plan" data-key="plan"><div class="plan-head"><h3>Game plan</h3>${host && !editingPlan ? `<button type="button" class="ghost" data-edit-plan>✏️ Edit</button>` : ""}</div>${planHTML}</div>
-      <h3 data-key="mh">Pizzas we're making</h3>
+      <div class="making-title" data-key="mh"><h3>Pizzas we're making</h3>${host ? `<span class="count-step">
+        <button type="button" class="ghost icon-btn" data-count="-1" aria-label="Make one fewer pizza" data-tip="One fewer" ${made.length <= 1 ? "disabled" : ""}><span>−</span></button>
+        <b aria-live="polite">${made.length}</b>
+        <button type="button" class="ghost icon-btn" data-count="1" aria-label="Make one more pizza" data-tip="One more" ${made.length >= all.length || made.length >= 50 ? "disabled" : ""}><span>+</span></button></span>` : ""}</div>
       <ol class="making" data-key="ml">${made.map((id) => pizzaRow(id, all.indexOf(id))).join("") || `<li class="empty">No pizzas yet.</li>`}</ol>
+      ${host ? `<p class="add-pizza" data-key="ap"><button type="button" class="secondary" data-add-pizza>+ Add a pizza</button> <small>Extra dough? It goes on the end of the list.</small></p>` : ""}
       <h3 data-key="ph">Prep list</h3>
       <div class="prep" data-key="pl">${prepHTML}</div>`);
     if (hadFocus === "plan") el.querySelector("[data-plan-form] textarea")?.focus();
     if (hadFocus === "note") el.querySelector("[data-note-form] input")?.focus();
+    if (hadFocus === "ing") el.querySelector("[data-ing-form] input")?.focus();
+  }
+
+  // A pizza the host adds after the start (extra dough) goes on the end of the making list,
+  // and the count goes up so it makes the cut
+  async function addToMaking(id, before) {
+    const goal = pizzaGoal(state.meta);
+    await store.set("night/order", [...before, id]);
+    if (goal) await store.set("meta", { ...state.meta, pizzaGoal: Math.min(50, Math.max(goal, before.length + 1)) });
   }
 
   // ── 2. Oven: a timer per pizza, on the top or bottom rack ──
@@ -319,6 +343,20 @@ export function initNight(ctx) {
       editingNote = d.editNote;
       render();
       $("night-prep").querySelector("[data-note-form] input")?.focus();
+    } else if (d.editIng) {
+      editingIng = d.editIng;
+      render();
+      $("night-prep").querySelector("[data-ing-form] input")?.focus();
+    } else if ("cancelIng" in d) {
+      editingIng = null;
+      render();
+    } else if (d.count) {
+      // One more pulls in the next pizza by votes (or the host's order); one fewer drops the last
+      const n = making().length + Number(d.count);
+      if (n < 1 || n > Math.min(50, ordered().length)) return;
+      await store.set("meta", { ...state.meta, pizzaGoal: n });
+    } else if ("addPizza" in d) {
+      ctx.openBuilder();
     } else if ("cancelNote" in d) {
       editingNote = null;
       render();
@@ -347,6 +385,12 @@ export function initNight(ctx) {
       editingNote = null;
       await store.set(`night/notes/${f.dataset.noteForm}`, text || null);
       render();
+    } else if (f.matches("[data-ing-form]")) {
+      e.preventDefault();
+      const text = f.querySelector("input").value.trim().slice(0, 200);
+      editingIng = null;
+      await store.set(`night/ingNotes/${f.dataset.ingForm}`, text || null);
+      render();
     }
   });
 
@@ -357,5 +401,5 @@ export function initNight(ctx) {
     await store.set(`night/prep/${key}`, e.target.checked || null);
   });
 
-  return { render, isShowing };
+  return { render, isShowing, making, addToMaking };
 }

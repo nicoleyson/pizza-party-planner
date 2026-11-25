@@ -532,3 +532,41 @@ check("review fixes: the server's clock decides when it's over; drafts, pizza ed
   const tilt = (sel) => js(`getComputedStyle(document.querySelector(${JSON.stringify(sel)})).transform`);
   assert.equal(await tilt("#table-section .h-emoji"), await tilt("#diet-section .h-emoji"), "On the table tilts like the 2nd section");
 });
+
+check("party mode: hosts change the count, add a pizza for extra dough, and note prep list ingredients", async () => {
+  const saved = (path) => js(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"]${path}`);
+  await open(nightParty(-60000), "matt", "Matt");
+  assert.equal(await js(`!!document.querySelector("#night-prep [data-count]")`), false, "guests don't change the count");
+  assert.equal(await js(`!!document.querySelector("#night-prep [data-add-pizza]")`), false, "or add pizzas");
+  assert.equal(await js(`!!document.querySelector("#night-prep [data-edit-ing]")`), false, "or write ingredient notes");
+  assert.equal(await visible("#pizza-form"), false, "guests can't propose once it starts");
+
+  await open(null, "nicole", "Nicole");
+  // + brings the next pizza by votes onto the list; − takes the last one off
+  assert.equal(await js(`document.querySelectorAll("#night-prep li[data-making]").length`), 2);
+  await click(`#night-prep [data-count="1"]`);
+  await until(`document.querySelectorAll("#night-prep li[data-making]").length === 3`, "the next pizza joins");
+  assert.equal(await saved(".meta.pizzaGoal"), 3);
+  assert.equal(await js(`document.querySelector('#night-prep [data-count="1"]').disabled`), true, "no more pizzas to add");
+  await click(`#night-prep [data-count="-1"]`);
+  await until(`document.querySelectorAll("#night-prep li[data-making]").length === 2`, "the last one comes off");
+
+  // A note on a prep list ingredient
+  await click(`#night-prep [data-edit-ing="mozzarella"]`);
+  await fill(`#night-prep [data-ing-form="mozzarella"] input`, "Shred 2 cups");
+  await submit(`#night-prep [data-ing-form="mozzarella"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.ingNotes?.mozzarella === "Shred 2 cups"`, "the note saved");
+  assert.match(await text(`#night-prep li[data-prep-row="mozzarella"]`), /Shred 2 cups/);
+
+  // Extra dough: the host adds a pizza, and it goes on the end of the list
+  await click("#night-prep [data-add-pizza]");
+  assert.equal(await visible("#pizza-form"), true, "the builder opens for the host");
+  await fill("#pizza-name", "Extra Dough");
+  await js(`document.querySelector('#builder input[value="mozzarella"]').click(); true`);
+  await submit("#pizza-form");
+  await until(`[...document.querySelectorAll("#night-prep li[data-making] b")].map((b) => b.textContent).join("|") === "Basil Instinct|Fungi Fiesta|Extra Dough"`, "it joins the end of the making list");
+  assert.equal(await saved(".meta.pizzaGoal"), 3, "the count goes up by one");
+  const extra = await js(`Object.values(JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].pizzas).find((p) => p.name === "Extra Dough")`);
+  assert.deepEqual(extra.votes, undefined, "no vote: voting's closed");
+  assert.ok(await js(`!!document.querySelector('#night-oven li[data-oven] ') && [...document.querySelectorAll("#night-oven li[data-oven]")].some((li) => li.textContent.includes("Extra Dough"))`), "it gets an oven row");
+});

@@ -323,6 +323,12 @@ function startParty(code) {
     now: () => db.now(), stamp: () => db.stamp(), uid,
     night, over: () => over(), canManage: () => canManage(), render: () => render(),
     myName: () => myName(), iconOf: (it) => iconOf(it),
+    openBuilder: () => {
+      planningOpen = true;
+      render();
+      $("propose-section").scrollIntoView({ behavior: "smooth", block: "start" });
+      $("pizza-name").focus({ preventScroll: true });
+    },
   });
   // While party mode shows, the planning sections fold away under one button
   let planningOpen = true, wasShowing = false;
@@ -431,8 +437,12 @@ function startParty(code) {
       ? ` · 🔥 Party mode starts at ${new Date(state.meta.nightAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. Voting closes then.`
       : "";
     $("party-date").textContent = when + starts;
-    $("pizza-form").hidden = night();
+    // Once party mode starts only the host and cohosts add pizzas (extra dough)
+    $("pizza-form").hidden = night() && !canManage();
     $("voting-closed").hidden = !night();
+    $("voting-closed").textContent = canManage()
+      ? "Voting's closed 🔥 Extra dough? Add a pizza here and it goes on the end of the making list."
+      : "Voting closed: it's party time 🔥";
     $("party").classList.toggle("is-night", night());
     $("party").classList.toggle("is-over", done);
     $("party-over").hidden = !done;
@@ -832,7 +842,16 @@ function startParty(code) {
       .filter(Boolean);
     if (!picks.length) return toast("Pick at least one ingredient");
     const baked = pickedItems();
-    await store.add("pizzas", { name, by, uid, picks, createdAt: Date.now(), votes: { [uid]: by } });
+    if (night()) {
+      // Extra dough: no vote (voting's closed), and it joins the making list
+      if (!canManage()) return;
+      const before = nightUI.making();
+      const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      await store.set(`pizzas/${id}`, { name, by, uid, picks, createdAt: Date.now() });
+      await nightUI.addToMaking(id, before);
+    } else {
+      await store.add("pizzas", { name, by, uid, picks, createdAt: Date.now(), votes: { [uid]: by } });
+    }
     $("pizza-name").value = "";
     document.querySelectorAll("#builder input:checked").forEach((i) => (i.checked = false));
     toast(`${name} is in the oven 🍕🔥`);
@@ -1086,6 +1105,7 @@ function cleanNight(n) {
     order: Object.values(obj(n.order)).filter((id) => typeof id === "string" && SAFE_ID.test(id)),
     notes: Object.fromEntries(Object.entries(obj(n.notes)).filter(([k, v]) => SAFE_ID.test(k) && typeof v === "string")),
     prep: Object.fromEntries(Object.entries(obj(n.prep)).filter(([k, v]) => /^[a-z0-9_]{1,60}$/.test(k) && v === true)),
+    ingNotes: Object.fromEntries(Object.entries(obj(n.ingNotes)).filter(([k, v]) => /^[a-z0-9_]{1,60}$/.test(k) && typeof v === "string")),
     oven: cleanIds(n.oven),
   };
 }

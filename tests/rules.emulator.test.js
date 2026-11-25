@@ -383,3 +383,20 @@ test("party mode settings on the party", { skip }, async () => {
   await denied(put(`${P}/meta`, { ...base, bakeMinutes: 31 }, host), "bake time over 30");
   await denied(put(`${P}/meta`, { ...base, bakeMinutes: 0 }, host), "bake time 0");
 });
+
+test("party mode: hosts add a pizza after the start, and write notes on prep list ingredients", { skip }, async () => {
+  const P = "parties/nightmore-abc1";
+  await allowed(put(P, nightParty(-HOUR), "admin"), "seed");
+  const extra = (who) => ({ name: "Extra dough", by: "Host", uid: who.uid, picks: ["Basil"], createdAt: Date.now() });
+  await allowed(put(`${P}/pizzas/more1`, extra(host), host), "the host adds a pizza after it starts");
+  await allowed(put(`${P}/pizzas/more2`, extra(cohost), cohost), "so can a cohost");
+  await denied(put(`${P}/pizzas/more3`, extra(guest), guest), "guests still can't");
+  await denied(put(`${P}/pizzas/more4`, extra(guest), host), "only as themselves");
+  await denied(put(`${P}/pizzas/more1/votes/${guest.uid}`, "Guest", guest), "voting is still closed");
+  await allowed(put(`${P}/night/ingNotes/basil`, "pick the leaves", cohost), "a note on an ingredient");
+  await allowed(put(`${P}/night/ingNotes/roasted_turkey`, "slice thin", host), "keys like the prep list's");
+  await denied(put(`${P}/night/ingNotes/basil`, "mine", guest), "guests can't write ingredient notes");
+  await denied(put(`${P}/night/ingNotes/Basil Leaves`, "x", host), "odd key");
+  await denied(put(`${P}/night/ingNotes/basil`, "x".repeat(201), host), "note too long");
+  await denied(put(`${P}/night/ingNotes/basil`, "", host), "empty");
+});
