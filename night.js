@@ -39,7 +39,8 @@ export function initNight(ctx) {
     const el = $("night-prep");
     // Keep what's being typed across live updates
     const planDraft = el.querySelector("[data-plan-form] textarea")?.value;
-    const noteDraft = el.querySelector("[data-note-form] input")?.value;
+    const noteForm = el.querySelector("[data-note-form]");
+    const noteDraft = noteForm?.dataset.noteForm === editingNote ? noteForm.querySelector("input")?.value : undefined;
     const hadFocus = el.contains(document.activeElement) ? document.activeElement.closest("form")?.matches("[data-plan-form]") ? "plan" : "note" : null;
     const all = ordered();
     const made = making();

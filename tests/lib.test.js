@@ -301,3 +301,15 @@ test("nextAka keeps old names newest first, drops the new name and spelling-only
   // Firebase can hand arrays back as objects
   assert.deepEqual(nextAka({ name: "B", aka: { 0: "A" } }, "C"), ["B", "A"]);
 });
+
+test("party mode data that can't be read never locks people out of the party", () => {
+  // If the site deploys before the new rules are published, reading these is refused: party mode
+  // should just stay off (partyModeUnreadable), not show "you're not invited" (blocked).
+  const app = readFileSync(new URL("../app.js", import.meta.url), "utf8");
+  for (const part of ["night", "ratings", "adventurous"]) {
+    const start = app.indexOf("db.watch(`${ROOT}/" + part + "`");
+    assert.ok(start >= 0, `${part} has its own watch`);
+    const statement = app.slice(start, app.indexOf("\n    db.watch(", start + 1)).trim();
+    assert.ok(statement.endsWith("partyModeUnreadable);"), `${part} stays quiet when it can't be read`);
+  }
+});

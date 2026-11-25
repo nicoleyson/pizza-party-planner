@@ -189,7 +189,7 @@ function startParty(code) {
     });
   // Once the party's over it's a keepsake: only the host's settings (name, date, guest list, cohosts) can change.
   // The database rules enforce this too.
-  const over = () => isOver(state.meta);
+  const over = () => isOver(state.meta, db.now());
   const locked = (p) => {
     if (!over() || p.startsWith("meta") || p.startsWith("guests") || p.startsWith("cohosts")) return false;
     // Ratings and 🌶️ picks stay open until the end of the next day (the rules check that too)
@@ -338,7 +338,7 @@ function startParty(code) {
   // Whoever proposed a pizza can change its toppings until someone else votes for it.
   // After that only the host and cohosts can, so nobody's vote gets swapped out from under them.
   const othersVoted = (p) => Object.keys(p.votes || {}).some((v) => v !== p.uid);
-  const canEditToppings = (p) => !over() && (canManage() || (p.uid === uid && !othersVoted(p)));
+  const canEditToppings = (p) => !over() && (canManage() || (p.uid === uid && !othersVoted(p) && !night()));
   // Your grocery run: what you've ticked off is only remembered in this browser
   const GOT_KEY = `got:${code}`;
   let got = new Set(JSON.parse(localStorage[GOT_KEY] || "[]"));
@@ -747,7 +747,7 @@ function startParty(code) {
             const pieLook = editing ? { ...(d.sauce !== "auto" && { sauce: d.sauce }), ...(d.cheese !== "auto" && { cheese: d.cheese }) } : p.look;
             const heading = `<h3>${esc(p.name)}</h3>${done ? "" : `<div class="pizza-tools">
                      <button class="ghost icon-btn" data-edit-pizza="${id}" aria-label="Edit ${esc(p.name)}" aria-expanded="${editing}" data-tip="Edit"><span>✏️</span></button>
-                     ${p.uid === uid ? delBtn("pizza", id) : ""}</div>`}`;
+                     ${p.uid === uid && !night() ? delBtn("pizza", id) : ""}</div>`}`;
             const voteBtn = `<button class="vote ${mine ? "on" : ""}" data-vote="${id}" aria-pressed="${mine}" ${done || night() ? "disabled" : ""} aria-label="${done ? `${count} vote${count === 1 ? "" : "s"}` : mine ? "Remove your vote" : "Vote for this one"}">${done ? "" : `<span class="box" aria-hidden="true">${mine ? "✓" : ""}</span>${mine ? "Voted" : "Vote"}`}<b>${count}</b></button>`;
             return `<div class="pizza ${lead ? "leader" : ""}" data-key="${id}">
               <div class="plate">${lead ? '<span class="crown" role="img" aria-label="Most votes">👑</span>' : ""}${pieHTML(pieItems, pieLook)}</div>
@@ -1012,6 +1012,8 @@ function startParty(code) {
   // (the database rules reject them too; this is a second lock on the door).
   // Each part loads separately, so the guest list (emails) only ever goes to the host.
   let joined = false;
+  // Party-mode data that can't be read (rules not updated yet) just leaves party mode off
+  const partyModeUnreadable = () => {};
   const blocked = (err) => {
     if (!/permission/i.test(err.message)) return toast("Couldn't load: " + err.message);
     $("party").querySelector("main").hidden = true;
@@ -1042,14 +1044,15 @@ function startParty(code) {
     if (loading) return;
     loading = true;
     db.watch(`${ROOT}/cohosts`, (data) => { state.cohosts = cohostIds(data); watchGuests(); render(); }, () => {});
-    for (const part of ["items", "pizzas", "diets", "ratings"]) {
+    for (const part of ["items", "pizzas", "diets"]) {
       db.watch(`${ROOT}/${part}`, (data) => { state[part] = cleanIds(data); render(); }, blocked);
     }
-    db.watch(`${ROOT}/night`, (data) => { state.night = cleanNight(data); render(); }, blocked);
+    db.watch(`${ROOT}/ratings`, (data) => { state.ratings = cleanIds(data); render(); }, partyModeUnreadable);
+    db.watch(`${ROOT}/night`, (data) => { state.night = cleanNight(data); render(); }, partyModeUnreadable);
     db.watch(`${ROOT}/adventurous`, (data) => {
       state.adventurous = Object.fromEntries(Object.entries(data || {}).filter(([k, v]) => SAFE_ID.test(k) && typeof v === "string" && SAFE_ID.test(v)));
       render();
-    }, blocked);
+    }, partyModeUnreadable);
     db.watch(`${ROOT}/people`, (data) => {
       state.people = cleanIds(data);
       renderPeople();

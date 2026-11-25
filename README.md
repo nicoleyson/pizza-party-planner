@@ -119,7 +119,7 @@ Every push to `main` runs the tests, builds `config.js` from the secrets, and pu
 
 The invite link works like a password, so only share it with friends. If it leaks, turn on invite-only or host a new party.
 
-> **Updating from an older version?** Cohosts need the latest rules too, and so do party dates. Paste the new [`database.rules.json`](database.rules.json) into Firebase → Realtime Database → **Rules** and click **Publish** *before* you push the site. The old rules don't know about party dates, so creating or editing a party with a date would fail until they're updated. The new rules work fine with the old site, and existing parties aren't affected.
+> **Updating from an older version?** Cohosts need the latest rules too, and so do party dates and party mode. Paste the new [`database.rules.json`](database.rules.json) into Firebase → Realtime Database → **Rules** and click **Publish** *before* you push the site. The old rules don't know about party dates, so creating or editing a party with a date would fail until they're updated. Party mode stays switched off until then (the page just doesn't show it), and setting a party mode time would fail. The new rules work fine with the old site, and existing parties aren't affected: the party mode rules only restrict parties that have a party mode time.
 
 To clean up old parties: Firebase → Realtime Database → **Data** → `parties` → delete the ones you don't need.
 
@@ -164,6 +164,7 @@ Worth checking in Firebase and Google Cloud:
 | `index.html` | The page, including its Content Security Policy |
 | `app.js` | Sign-in, the party screens, saving and live updates |
 | `lib.js` | Small helpers: party codes, escaping, grouping ingredients, ranking pizzas |
+| `night.js` | Party mode: the host preview, game plan, prep list, oven timers, ratings and awards |
 | `pie.js` | The pizza drawings: sauce colors, cheese, topping dots and icons |
 | `style.css` | The look: a checkered tablecloth with paper order tickets on it, and a walnut table in dark mode (follows your device setting) |
 | `theme.js` | The Light / Dark switch. Loads first so the page never flashes the wrong theme |

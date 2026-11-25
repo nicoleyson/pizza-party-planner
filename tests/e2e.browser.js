@@ -502,3 +502,33 @@ check("rate ready pizzas, pick the most adventurous, and the keepsake shows the 
   assert.equal(await visible("#keepsake"), true);
   assert.equal(await js(`!!document.querySelector("#keepsake [data-rate]")`), false, "ratings closed after a day");
 });
+
+check("review fixes: the server's clock decides when it's over; drafts, pizza edits and tilts behave", async () => {
+  // A phone whose clock is an hour slow still knows the party ended at the server's midnight
+  await open(nightParty(-60000, { endsAt: Date.now() + 30 * 60000 }), "matt", "Matt");
+  await js(`localStorage.clockSkew = "3600000"; true`);
+  await open(null, "matt", "Matt");
+  assert.equal(await visible("#party-over"), true, "over by the server's clock");
+  assert.equal(await visible("#night-section"), false);
+  await js(`delete localStorage.clockSkew; true`);
+
+  // A half-typed prep note doesn't jump to another pizza
+  await open(nightParty(-60000), "nicole", "Nicole");
+  await click(`#night-prep [data-edit-note="z1"]`);
+  await fill(`#night-prep [data-note-form="z1"] input`, "half typed");
+  await click(`#night-prep [data-edit-note="z2"]`);
+  assert.equal(await js(`document.querySelector('#night-prep [data-note-form="z2"] input').value`), "", "z2's own (empty) note");
+
+  // Once party mode starts, a pizza's maker can't delete it or change its toppings (the rules refuse it)
+  await open(null, "matt", "Matt");
+  await click("#planning-toggle");
+  assert.equal(await js(`!!document.querySelector('#pizzas [data-del="pizza:z3"]')`), false, "no delete in party mode");
+  await click(`#pizzas [data-edit-pizza="z3"]`);
+  assert.equal(await js(`!!document.querySelector('#pizzas [data-pizza-form="z3"] [data-f="pick"]')`), false, "toppings locked");
+
+  // Parties without party mode look exactly as before: every other section's icon tilts the other way
+  await open(basicParty(), "matt", "Matt");
+  await sleep(700);
+  const tilt = (sel) => js(`getComputedStyle(document.querySelector(${JSON.stringify(sel)})).transform`);
+  assert.equal(await tilt("#table-section .h-emoji"), await tilt("#diet-section .h-emoji"), "On the table tilts like the 2nd section");
+});
