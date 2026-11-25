@@ -619,6 +619,9 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .prep-who { color: var(--muted); }
 .prep-missing { color: var(--red); font-weight: 700; }
 .prep-list label.got b { text-decoration: line-through; color: var(--muted); }
+/* Buttons that can't be used yet (the preview, a taken rack) look it */
+.night button:disabled { opacity: .45; cursor: not-allowed; }
+.oven-locked { margin: 6px 0 4px; }
 .oven { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
 .oven-row { display: grid; gap: 6px; padding: 10px; border: 2px solid var(--paper-edge); border-radius: 10px; }
 .oven-row.baking { border-color: var(--red); }

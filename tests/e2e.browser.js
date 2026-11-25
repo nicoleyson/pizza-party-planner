@@ -618,3 +618,16 @@ check("party mode: hosts plan prep by day, add tasks like the dough, and tick th
   await click(`#night-prep [data-del-task="${taskId}"]`);
   await until(`!document.querySelector('#night-prep [data-del-task="${taskId}"]')`, "the task is gone");
 });
+
+check("in the host preview, oven buttons look switched off and say why", async () => {
+  // Timers left from earlier, then the start time moved later: the host is back in preview
+  await open(nightParty(60 * 60000, {}), "nicole", "Nicole");
+  await js(`(() => { const d = JSON.parse(localStorage["pizza-demo"]); d.parties["${CODE}"].night = { oven: { z1: { rack: "top", startedAt: Date.now() - 30 * 60000, minutes: 1 } } }; localStorage["pizza-demo"] = JSON.stringify(d); return true; })()`);
+  await open(null, "nicole", "Nicole");
+  await click("#preview-night");
+  const ready = `#night-oven [data-ready="z1"]`;
+  assert.equal(await js(`document.querySelector('${ready}').disabled`), true);
+  assert.ok(Number(await js(`getComputedStyle(document.querySelector('${ready}')).opacity`)) < 0.7, "faded");
+  assert.equal(await js(`getComputedStyle(document.querySelector('${ready}')).cursor`), "not-allowed");
+  assert.match(await text("#night-oven .oven-locked"), /🔒 Preview: the oven opens at/);
+});

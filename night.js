@@ -219,7 +219,7 @@ export function initNight(ctx) {
       ? `<label class="toggle wake" data-key="wake"><input type="checkbox" data-wake ${wakeLock ? "checked" : ""}> <span>Keep screen on</span></label>`
       : "";
     morph(el, `<h2 data-key="h"><span class="h-emoji" aria-hidden="true">🔥</span>Oven</h2>
-      <p class="lede" data-key="l">Bake time: ${bakeMinutes(state.meta)} min${open ? "" : ". The oven opens when party mode starts."}</p>
+      <p class="lede" data-key="l">Bake time: ${bakeMinutes(state.meta)} min</p>${open ? "" : `<p class="oven-locked voting-lock" data-key="lock">🔒 Preview: the oven opens at ${esc(timeOf(state.meta.nightAt))}, when party mode starts.</p>`}
       <ul class="oven" data-key="list">${rows.map(row).join("") || `<li class="empty">No pizzas to bake yet.</li>`}</ul>${wake}`);
   }
 
