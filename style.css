@@ -577,6 +577,8 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .planning, .planning-body { display: grid; gap: 34px; }
 .planning-toggle { justify-self: center; }
 .night-banner { text-align: center; }
+.night-banner h2 { justify-content: center; }
+.voting-lock { margin: 10px auto 0; display: inline-block; padding: 6px 14px; border-radius: 999px; background: var(--field); border: 2px dashed var(--paper-edge); font-weight: 700; }
 .night-banner .row { justify-content: center; margin-top: 8px; }
 .night-part:empty { display: none; }
 .night-part h3 { margin: 18px 0 8px; font-size: 1rem; }

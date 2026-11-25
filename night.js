@@ -31,7 +31,7 @@ export function initNight(ctx) {
 
   function renderBanner() {
     morph($("night-banner"), ctx.night()
-      ? `<h2 data-key="h"><span class="h-emoji" aria-hidden="true">🔥</span>Party mode</h2><p data-key="p" class="lede">Voting's closed. Here's the plan for tonight.</p>`
+      ? `<h2 data-key="h"><span class="h-emoji" aria-hidden="true">🥳</span>Party mode</h2><p data-key="p" class="voting-lock">🔒 Voting's closed. Here's the plan for tonight.</p>`
       : `<p data-key="p"><b>👀 Preview:</b> guests will see this at ${esc(timeOf(state.meta.nightAt))}.</p>
          <div class="row" data-key="b"><button type="button" data-start-now>Start now</button><button type="button" class="secondary" data-back-to-planning>Back to planning</button></div>`);
   }

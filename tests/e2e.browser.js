@@ -395,6 +395,9 @@ check("the host previews party mode and preps; guests get it at the start time",
   // A guest, now that it's started: tick prep, but no host controls
   await open(null, "matt", "Matt");
   assert.equal(await visible("#night-section"), true, "no preview needed");
+  assert.match(await text("#night-banner h2"), /🥳\s*Party mode/);
+  assert.match(await text("#night-banner .voting-lock"), /^🔒 Voting's closed\. Here's the plan for tonight\.$/);
+  assert.equal(await js(`document.getElementById("night-banner").classList.contains("ticket")`), true, "its own card");
   assert.equal(await js(`!!document.querySelector("#night-prep [data-edit-plan], #night-prep [data-move], #night-prep [data-edit-note]")`), false, "host controls hidden");
   await js(`document.querySelector('#night-prep [data-prep="mozzarella"]').click(); true`);
   await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.prep?.mozzarella === true`, "the tick saved");
