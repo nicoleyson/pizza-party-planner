@@ -407,3 +407,52 @@ check("the host previews party mode and preps; guests get it at the start time",
   assert.equal(await js(`[...document.querySelectorAll("#pizzas [data-vote]")].some((b) => !b.disabled)`), true, "voting reopens");
   assert.equal((await saved()).night.prep.mozzarella, true, "ticks kept");
 });
+
+check("oven: racks, a countdown, check it, +2 min, ready and stop", async () => {
+  await open(nightParty(-60000), "matt", "Matt");
+  const oven = () => js(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.oven || {}`);
+  const row = (id) => text(`#night-oven [data-oven="${id}"]`);
+  assert.match(await text("#night-oven"), /Bake time: 1 min/);
+
+  await click(`#night-oven [data-rack="z1:top"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.oven?.z1?.rack === "top"`, "z1 on the top rack");
+  assert.equal((await oven()).z1.minutes, 1, "uses the party's bake time");
+  assert.equal(await js(`document.querySelector('#night-oven [data-rack="z2:top"]').disabled`), true, "the top rack is taken");
+  assert.match(await text(`#night-oven [data-rack="z2:top"]`), /Basil Instinct/, "and says by what");
+  assert.equal(await js(`document.querySelector('#night-oven [data-rack="z2:bottom"]').disabled`), false);
+  assert.match(await text(`#night-oven [data-oven="z1"] .countdown`), /^[01]:\d\d$/, "counting down from 1:00");
+
+  // Time's up: Check it! and a heads-up on every open phone
+  await js(`window.__toasts = []; new MutationObserver(() => window.__toasts.push(document.getElementById("toast").textContent)).observe(document.getElementById("toast"), { childList: true, characterData: true, subtree: true }); localStorage.clockSkew = "61000"; true`);
+  await until(`document.querySelector('#night-oven [data-oven="z1"]')?.textContent.includes("Check it! 👀")`, "check it", 4000);
+  await until(`window.__toasts.some((t) => /check it/i.test(t) && t.includes("Basil Instinct"))`, "the check-it toast");
+
+  await click(`#night-oven [data-plus="z1"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night.oven.z1.minutes === 3`, "+2 min");
+  await until(`!document.querySelector('#night-oven [data-oven="z1"]').textContent.includes("Check it")`, "baking again");
+  await js(`localStorage.clockSkew = "181000"; true`);
+  await until(`!!document.querySelector('#night-oven [data-ready="z1"]')`, "check it again after the extra 2 minutes", 4000);
+
+  await click(`#night-oven [data-ready="z1"]`);
+  await until(`typeof JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night.oven.z1.readyAt === "number"`, "ready");
+  assert.match(await row("z1"), /Ready 🍕 at/);
+  assert.equal(await js(`document.querySelector('#night-oven [data-rack="z2:top"]').disabled`), false, "the rack is free again");
+  await click(`#night-oven [data-undo="z1"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night.oven.z1.readyAt === undefined`, "undo ready");
+  await click(`#night-oven [data-ready="z1"]`);
+  await until(`typeof JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night.oven.z1.readyAt === "number"`, "ready again");
+
+  await click(`#night-oven [data-rack="z2:bottom"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night.oven.z2?.rack === "bottom"`, "z2 on the bottom");
+  await click(`#night-oven [data-stop="z2"]`);
+  await until(`!JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night.oven.z2`, "stopped");
+
+  // Review Focus 3: a pizza in the oven stays on screen even if the host moves it below the line
+  await click(`#night-oven [data-rack="z2:top"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night.oven.z2?.rack === "top"`, "z2 in");
+  await open(null, "nicole", "Nicole");
+  await click(`#night-prep [data-move="z2:1"]`);
+  await until(`!document.querySelector('#night-prep [data-making="z2"]')`, "z2 below the line");
+  assert.equal(await visible(`#night-oven [data-oven="z2"]`), true, "still in the oven list");
+  await js(`delete localStorage.clockSkew; true`);
+});

@@ -1,7 +1,7 @@
 // 🔥 Party mode: what the page shows from the host's start time until the party's over.
 // Prep (game plan, the pizzas being made, the prep list), the oven, and ratings & awards.
 // app.js owns the data and hands it over in `ctx`; this file only draws it and saves changes.
-import { nightFields, makingList, prepList, pizzaGoal } from "./lib.js";
+import { nightFields, makingList, prepList, pizzaGoal, ovenState, clock, bakeMinutes } from "./lib.js";
 
 export function initNight(ctx) {
   const { $, esc, state, store, morph, toast } = ctx;
@@ -23,6 +23,7 @@ export function initNight(ctx) {
     if (!show) return;
     renderBanner();
     renderPrep(host);
+    renderOven();
   }
 
   function renderBanner() {
@@ -96,14 +97,136 @@ export function initNight(ctx) {
     if (hadFocus === "note") el.querySelector("[data-note-form] input")?.focus();
   }
 
+  // ── 2. Oven: a timer per pizza, on the top or bottom rack ──
+  const RACKS = { top: "Top rack", bottom: "Bottom rack" };
+  const lastState = new Map(); // pizza id -> state at the last draw, to notice "time's up" once
+  const ovenRows = () => {
+    const ids = making();
+    for (const id of Object.keys(state.night.oven)) if (state.pizzas[id] && !ids.includes(id)) ids.push(id);
+    return ids;
+  };
+  function renderOven() {
+    const el = $("night-oven");
+    const now = ctx.now();
+    const open = ctx.night();
+    const rows = ovenRows();
+    const states = Object.fromEntries(rows.map((id) => [id, ovenState(state.night.oven[id], now)]));
+    // Which rack each pizza is baking on (a ready pizza frees its rack)
+    const busy = {};
+    for (const id of rows) if (["baking", "check"].includes(states[id].state)) busy[state.night.oven[id].rack] = id;
+    for (const id of rows) {
+      const was = lastState.get(id);
+      if (was === "baking" && states[id].state === "check") timesUp(id);
+      lastState.set(id, states[id].state);
+    }
+    const row = (id) => {
+      const p = state.pizzas[id];
+      const e = state.night.oven[id];
+      const { state: st, secs } = states[id];
+      const dis = open ? "" : "disabled";
+      let body;
+      if (st === "waiting") {
+        body = `<span class="oven-status">Up next</span><span class="oven-btns">${Object.entries(RACKS)
+          .map(([rack, label]) => {
+            const taken = busy[rack];
+            return `<button type="button" class="${taken ? "secondary" : ""}" data-rack="${id}:${rack}" ${taken || !open ? "disabled" : ""}>${label}${taken ? ` · ${esc(state.pizzas[taken].name)}` : ""}</button>`;
+          })
+          .join("")}</span>`;
+      } else if (st === "baking") {
+        body = `<span class="oven-status">🔥 ${RACKS[e.rack]} <span class="countdown">${clock(secs)}</span></span>
+          <span class="oven-btns"><button type="button" class="secondary" data-plus="${id}" ${dis}>+2 min</button><button type="button" class="ghost" data-stop="${id}" ${dis}>Stop</button></span>`;
+      } else if (st === "check") {
+        body = `<span class="oven-status check">Check it! 👀 <span class="over">+${clock(secs)}</span> <small>${RACKS[e.rack]}</small></span>
+          <span class="oven-btns"><button type="button" data-ready="${id}" ${dis}>Ready 🍕</button><button type="button" class="secondary" data-plus="${id}" ${dis}>+2 min</button><button type="button" class="ghost" data-stop="${id}" ${dis}>Stop</button></span>`;
+      } else {
+        body = `<span class="oven-status ready">Ready 🍕 at ${esc(timeOf(e.readyAt))}</span>
+          <span class="oven-btns"><button type="button" class="ghost" data-undo="${id}" ${dis}>Undo</button></span>`;
+      }
+      return `<li class="oven-row ${st}" data-oven="${id}" data-key="o-${id}"><b class="oven-name">${esc(p.name)}</b>${body}</li>`;
+    };
+    const wake = "wakeLock" in navigator
+      ? `<label class="toggle wake" data-key="wake"><input type="checkbox" data-wake ${wakeLock ? "checked" : ""}> <span>Keep screen on</span></label>`
+      : "";
+    morph(el, `<h2 data-key="h"><span class="h-emoji" aria-hidden="true">🔥</span>Oven</h2>
+      <p class="lede" data-key="l">Bake time: ${bakeMinutes(state.meta)} min${open ? "" : ". The oven opens when party mode starts."}</p>
+      <ul class="oven" data-key="list">${rows.map(row).join("") || `<li class="empty">No pizzas to bake yet.</li>`}</ul>${wake}`);
+  }
+
+  // Time's up: a chime, a buzz (where phones allow it) and a heads-up
+  let audio;
+  const unlockAudio = () => {
+    const A = window.AudioContext || window.webkitAudioContext;
+    if (!A) return;
+    try { audio ??= new A(); audio.resume?.(); } catch { /* no sound, that's fine */ }
+  };
+  function chime() {
+    if (!audio || audio.state !== "running") return;
+    for (const t of [0, 0.28]) {
+      const o = audio.createOscillator(), g = audio.createGain(), at = audio.currentTime + t;
+      o.frequency.value = 880;
+      o.connect(g).connect(audio.destination);
+      g.gain.setValueAtTime(0.25, at);
+      g.gain.exponentialRampToValueAtTime(0.001, at + 0.22);
+      o.start(at);
+      o.stop(at + 0.24);
+    }
+  }
+  function timesUp(id) {
+    const e = state.night.oven[id];
+    chime();
+    navigator.vibrate?.([200, 100, 200]);
+    toast(`${state.pizzas[id].name}: check it! 👀 (${RACKS[e.rack].toLowerCase()})`);
+  }
+  // Count down every second while anything's in the oven
+  setInterval(() => {
+    if (!isShowing()) return;
+    const now = ctx.now();
+    if (Object.values(state.night.oven).some((e) => ["baking", "check"].includes(ovenState(e, now).state))) renderOven();
+  }, 1000);
+
+  // Keep the screen on while the oven's going (where the browser can)
+  let wakeLock = null;
+  async function setWake(on) {
+    try {
+      if (on) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => { if (document.visibilityState === "visible") wakeLock = null; renderOven(); }); }
+      else { await wakeLock?.release(); wakeLock = null; }
+    } catch { wakeLock = null; toast("This phone won't keep the screen on, sorry"); }
+    renderOven();
+  }
+  let wantWake = false;
+  document.addEventListener("visibilitychange", () => { if (wantWake && document.visibilityState === "visible" && isShowing()) setWake(true); });
+
+  async function oven(id, change) {
+    if (!ctx.night()) return;
+    const e = state.night.oven[id];
+    if (change === "stop") return store.set(`night/oven/${id}`, null);
+    if (change === "plus" && e) return store.set(`night/oven/${id}/minutes`, Math.min(60, e.minutes + 2));
+    if (change === "ready" && e) return store.set(`night/oven/${id}/readyAt`, ctx.stamp());
+    if (change === "undo" && e) return store.set(`night/oven/${id}/readyAt`, null);
+    if (change === "top" || change === "bottom") {
+      const now = ctx.now();
+      const taken = Object.entries(state.night.oven).some(([other, o]) => other !== id && o.rack === change && ["baking", "check"].includes(ovenState(o, now).state));
+      if (taken) return toast(`The ${change} rack is busy`);
+      lastState.set(id, "baking");
+      return store.set(`night/oven/${id}`, { rack: change, startedAt: ctx.stamp(), minutes: bakeMinutes(state.meta) });
+    }
+  }
+
   // ── Changes ──
   $("preview-night").addEventListener("click", () => { previewing = true; ctx.render(); $("night-section").scrollIntoView({ behavior: "smooth", block: "start" }); });
 
   $("night-section").addEventListener("click", async (e) => {
+    unlockAudio(); // phones only play sound after a tap
     const b = e.target.closest("button");
     if (!b) return;
     const d = b.dataset;
-    if ("backToPlanning" in d) {
+    if (d.rack) {
+      const [id, rack] = d.rack.split(":");
+      await oven(id, rack);
+    } else if (d.plus || d.stop || d.ready || d.undo) {
+      const change = ["plus", "stop", "ready", "undo"].find((k) => d[k]);
+      await oven(d[change], change);
+    } else if ("backToPlanning" in d) {
       previewing = false;
       ctx.render();
     } else if ("startNow" in d) {
@@ -158,6 +281,7 @@ export function initNight(ctx) {
   });
 
   $("night-section").addEventListener("change", async (e) => {
+    if ("wake" in (e.target.dataset || {})) { wantWake = e.target.checked; return setWake(wantWake); }
     const key = e.target.dataset?.prep;
     if (!key || !ctx.night()) return;
     await store.set(`night/prep/${key}`, e.target.checked || null);
