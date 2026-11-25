@@ -161,3 +161,61 @@ export function todayISO(now = new Date()) {
 // Only on your own computer, so the live site can't be switched into it.
 const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
 export const localDemo = (loc) => LOCAL_HOSTS.includes(loc?.hostname) && new URLSearchParams(loc?.search || "").has("demo");
+
+// ── Party mode ──
+// The host picks a time on the party's date when party mode starts (prep time, and voting closes).
+export const BAKE_DEFAULT = 8;
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const okBake = (n) => Number.isInteger(n) && n >= 1 && n <= 30;
+
+// What to save on meta for a date, a "HH:MM" start time and a bake time. Nothing without a real date and time.
+export function nightFields(date, time, bake) {
+  if (!partyEndsAt(date) || !TIME_RE.test(time || "")) return {};
+  const [y, m, d] = date.split("-").map(Number);
+  const [h, min] = time.split(":").map(Number);
+  const out = { nightTime: time, nightAt: new Date(y, m - 1, d, h, min).getTime() };
+  const n = typeof bake === "number" ? bake : bake === "" || bake == null ? NaN : Number(bake);
+  if (okBake(n)) out.bakeMinutes = n;
+  return out;
+}
+
+export const isNight = (meta, now = Date.now()) => typeof meta?.nightAt === "number" && now >= meta.nightAt && !isOver(meta, now);
+export const bakeMinutes = (meta) => (okBake(meta?.bakeMinutes) ? meta.bakeMinutes : BAKE_DEFAULT);
+
+// The pizzas being made, in order: the host's moves first, then the rest by votes. `goal` of them (0 = all).
+export function makingList(pizzas, goal, order) {
+  const ids = new Set(Object.keys(pizzas || {}));
+  const first = (Array.isArray(order) ? order : []).filter((id) => ids.has(id) && ids.delete(id));
+  const all = [...first, ...rankPizzas(pizzas).map(([id]) => id).filter((id) => ids.has(id))];
+  return goal ? all.slice(0, goal) : all;
+}
+
+// A safe database key for an ingredient's "got it ✓" tick.
+export const prepKey = (name) => ingredientKey(name).replace(/ /g, "_");
+
+// Every ingredient the pizzas being made need: how many pizzas and which, and who's bringing it.
+const PREP_ORDER = ["sauce", "cheese", "topping", "other"];
+export function prepList(makingIds, pizzas, items) {
+  const index = ingredientIndex(groupItems(Object.entries(items || {})));
+  const out = new Map();
+  for (const id of makingIds) {
+    const p = pizzas?.[id];
+    if (!p || !Array.isArray(p.picks)) continue;
+    const counted = new Set(); // each pizza counts once per ingredient, however it's spelled
+    for (const pick of p.picks) {
+      if (typeof pick !== "string" || !ingredientKey(pick)) continue;
+      const g = index.get(ingredientKey(pick));
+      const key = prepKey(g ? g.name : pick);
+      if (!out.has(key)) {
+        out.set(key, g
+          ? { key, name: g.name, category: g.category, pizzas: [], bringers: g.entries.map(([, it]) => ({ by: it.by, amount: it.amount || "" })), missing: false }
+          : { key, name: pick.trim(), category: "topping", pizzas: [], bringers: [], missing: true });
+      }
+      if (counted.has(key)) continue;
+      counted.add(key);
+      out.get(key).pizzas.push(p.name);
+    }
+  }
+  const rank = (c) => { const i = PREP_ORDER.indexOf(c); return i < 0 ? 99 : i; };
+  return [...out.values()].sort((a, b) => rank(a.category) - rank(b.category) || a.name.localeCompare(b.name));
+}
