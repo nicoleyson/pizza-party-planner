@@ -233,6 +233,12 @@
               ".validate": "$ing.matches(/^[a-z0-9_]{1,60}$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 7"
             }
           },
+          "extra": {
+            "$ing": {
+              ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && root.child('parties').child($party).child('meta').exists() && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('cohosts').child(auth.uid).val() === true || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && (root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('cohosts').child(auth.uid).val() === true) && (!root.child('parties').child($party).child('meta').child('endsAt').exists() || now < root.child('parties').child($party).child('meta').child('endsAt').val())",
+              ".validate": "$ing.matches(/^[a-z0-9_]{1,60}$/) && newData.val() === true"
+            }
+          },
           "tasks": {
             "$task": {
               ".write": "$party.matches(/^[a-z0-9-]{12,40}$/) && auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true && root.child('parties').child($party).child('meta').exists() && (root.child('parties').child($party).child('meta').child('guestOnly').val() !== true || root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('cohosts').child(auth.uid).val() === true || root.child('parties').child($party).child('guests').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && (root.child('parties').child($party).child('meta').child('uid').val() === auth.uid || root.child('parties').child($party).child('cohosts').child(auth.uid).val() === true) && (!root.child('parties').child($party).child('meta').child('endsAt').exists() || now < root.child('parties').child($party).child('meta').child('endsAt').val())",

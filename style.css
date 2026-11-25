@@ -609,6 +609,7 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .task-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
 .task-form input { flex: 1 1 180px; min-width: 0; }
 .task-form select { width: auto; flex: none; }
+.task-form[data-extra-form] select { flex: 1 1 200px; min-width: 0; }
 .making-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 18px 0 8px; }
 .making-title h3 { margin: 0; }
 .count-step { display: inline-flex; align-items: center; gap: 4px; }

@@ -631,3 +631,38 @@ check("in the host preview, oven buttons look switched off and say why", async (
   assert.equal(await js(`getComputedStyle(document.querySelector('${ready}')).cursor`), "not-allowed");
   assert.match(await text("#night-oven .oven-locked"), /🔒 Preview: the oven opens at/);
 });
+
+check("party mode: hosts put the dough someone's bringing on the prep list, and pick its day", async () => {
+  const party = nightParty(60 * 60000);
+  party.items.dough1 = { name: "Dough", category: "other", by: "Damian", uid: "damian", amount: "Enough for all the pizzas", createdAt: 9 };
+  party.items.water1 = { name: "Sparkling Water", category: "other", by: "Brad", uid: "brad", createdAt: 10 };
+  await open(party, "nicole", "Nicole");
+  await click("#preview-night");
+  assert.equal(await js(`!!document.querySelector('#night-prep li[data-prep-row="dough"]')`), false, "not on the list by itself");
+  const options = await js(`[...document.querySelectorAll("#night-prep [data-extra-form] option")].map((o) => o.value)`);
+  assert.ok(options.includes("dough") && options.includes("sparkling_water"), "anything people bring can be added");
+  assert.ok(!options.includes("mozzarella"), "but not what's already on the list");
+
+  await js(`document.querySelector("#night-prep [data-extra-form] select").value = "dough"; true`);
+  await submit("#night-prep [data-extra-form]");
+  await until(`!!document.querySelector('#night-prep li[data-prep-row="dough"]')`, "the dough joins the prep list");
+  assert.equal(await js(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night.extra.dough`), true);
+  assert.match(await text(`#night-prep li[data-prep-row="dough"]`), /Damian, Enough for all the pizzas/, "who's bringing it");
+  assert.equal(await js(`!!document.querySelector('#night-prep li[data-prep-row="sparkling_water"]')`), false, "the drinks stay off");
+  // Two days before
+  await js(`(() => { const s = document.querySelector('#night-prep select[data-prep-day="dough"]'); s.value = "2"; s.dispatchEvent(new Event("change", { bubbles: true })); return true; })()`);
+  await until(`!!document.querySelector('#night-prep [data-prep-days="2"] li[data-prep-row="dough"]')`, "the dough moves to two days before");
+
+  // Guests see it, but can't add or remove things
+  const saved = await js(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"]`);
+  saved.meta.nightAt = Date.now() - 60000;
+  await js(`(() => { const d = JSON.parse(localStorage["pizza-demo"]); d.parties["${CODE}"] = ${JSON.stringify(saved)}; localStorage["pizza-demo"] = JSON.stringify(d); return true; })()`);
+  await open(null, "matt", "Matt");
+  assert.equal(await js(`!!document.querySelector('#night-prep li[data-prep-row="dough"]')`), true);
+  assert.equal(await js(`!!document.querySelector("#night-prep [data-extra-form], #night-prep [data-del-extra]")`), false);
+
+  // The host takes it off again
+  await open(null, "nicole", "Nicole");
+  await click(`#night-prep [data-del-extra="dough"]`);
+  await until(`!document.querySelector('#night-prep li[data-prep-row="dough"]')`, "off the list");
+});

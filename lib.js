@@ -195,8 +195,9 @@ export const prepKey = (name) => ingredientKey(name).replace(/ /g, "_");
 
 // Every ingredient the pizzas being made need: how many pizzas and which, and who's bringing it.
 const PREP_ORDER = ["sauce", "cheese", "topping", "other"];
-export function prepList(makingIds, pizzas, items) {
-  const index = ingredientIndex(groupItems(Object.entries(items || {})));
+export function prepList(makingIds, pizzas, items, extra = []) {
+  const groups = groupItems(Object.entries(items || {}));
+  const index = ingredientIndex(groups);
   const out = new Map();
   for (const id of makingIds) {
     const p = pizzas?.[id];
@@ -216,8 +217,24 @@ export function prepList(makingIds, pizzas, items) {
       out.get(key).pizzas.push(p.name);
     }
   }
+  // Things people bring that the host put on the list (like the dough), even though no pizza picks them
+  const wanted = new Set(extra);
+  for (const g of groups) {
+    const key = prepKey(g.name);
+    if (!wanted.has(key) || out.has(key)) continue;
+    out.set(key, { key, name: g.name, category: g.category, pizzas: [], bringers: g.entries.map(([, it]) => ({ by: it.by, amount: it.amount || "" })), missing: false, extra: true });
+  }
   const rank = (c) => { const i = PREP_ORDER.indexOf(c); return i < 0 ? 99 : i; };
   return [...out.values()].sort((a, b) => rank(a.category) - rank(b.category) || a.name.localeCompare(b.name));
+}
+
+// What the host can still add to the prep list: things people are bringing that aren't on it yet
+export function prepChoices(items, list) {
+  const taken = new Set(list.map((r) => r.key));
+  return groupItems(Object.entries(items || {}))
+    .map((g) => ({ key: prepKey(g.name), name: g.name, by: [...new Set(g.entries.map(([, it]) => it.by))].join(", ") }))
+    .filter((c) => c.key && !taken.has(c.key))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // Where a pizza is in the oven. Timers save a start time and a length, so every phone

@@ -1,7 +1,7 @@
 // 🔥 Party mode: what the page shows from the host's start time until the party's over.
 // Prep (game plan, the pizzas being made, the prep list), the oven, and ratings & awards.
 // app.js owns the data and hands it over in `ctx`; this file only draws it and saves changes.
-import { nightFields, makingList, prepList, pizzaGoal, ovenState, clock, bakeMinutes, awards } from "./lib.js";
+import { nightFields, makingList, prepList, prepChoices, pizzaGoal, ovenState, clock, bakeMinutes, awards } from "./lib.js";
 
 export function initNight(ctx) {
   const { $, esc, state, store, morph, toast } = ctx;
@@ -92,7 +92,7 @@ export function initNight(ctx) {
         <small class="making-picks">${esc(picks.join(", "))}</small>${noteHTML}</li>`;
     };
 
-    const rows = prepList(made, state.pizzas, state.items);
+    const rows = prepList(made, state.pizzas, state.items, Object.keys(state.night.extra));
     const cats = Object.keys(ctx.CATS);
     const canTick = ctx.night() || host; // hosts tick off early prep before the start
     const tick = (key) => {
@@ -108,13 +108,13 @@ export function initNight(ctx) {
         ? `<form class="note-form" data-ing-form="${r.key}"><input maxlength="200" value="${esc(ingDraft ?? ingNote ?? "")}" aria-label="Prep note for ${esc(r.name)}" placeholder="Shred it, slice it thin, warm it up…"><button>Save</button><button type="button" class="secondary" data-cancel-ing>Cancel</button></form>`
         : ingNote ? `<p class="prep-note">📝 ${esc(ingNote)}</p>` : "";
       const tools = host
-        ? `<span class="prep-tools"><select data-prep-day="${r.key}" aria-label="When to prep ${esc(r.name)}">${dayOptions(dayOf(r.key), true)}</select>${editingIng === r.key ? "" : `<button type="button" class="ghost icon-btn prep-note-btn" data-edit-ing="${r.key}" aria-label="Prep note for ${esc(r.name)}" data-tip="Prep note"><span>📝</span></button>`}</span>`
+        ? `<span class="prep-tools"><select data-prep-day="${r.key}" aria-label="When to prep ${esc(r.name)}">${dayOptions(dayOf(r.key), true)}</select>${editingIng === r.key ? "" : `<button type="button" class="ghost icon-btn prep-note-btn" data-edit-ing="${r.key}" aria-label="Prep note for ${esc(r.name)}" data-tip="Prep note"><span>📝</span></button>`}${r.extra ? `<button type="button" class="ghost icon-btn" data-del-extra="${r.key}" aria-label="Take ${esc(r.name)} off the prep list" data-tip="Take off the list"><span>✕</span></button>` : ""}</span>`
         : "";
       const who = r.missing
         ? `<span class="prep-missing">nobody's bringing this ⚠️</span>`
         : esc(r.bringers.map((b) => (b.amount ? `${b.by}, ${b.amount}` : b.by)).join(" · "));
       return `<li data-prep-row="${r.key}" data-key="pr-${r.key}"><label class="${got ? "got" : ""}">${tick(r.key)}
-        <span class="prep-what"><b>${esc(r.name)}</b> <span class="prep-n">${r.pizzas.length} pizza${r.pizzas.length === 1 ? "" : "s"}: ${esc(r.pizzas.join(", "))}</span>
+        <span class="prep-what"><b>${esc(r.name)}</b> ${r.pizzas.length ? `<span class="prep-n">${r.pizzas.length} pizza${r.pizzas.length === 1 ? "" : "s"}: ${esc(r.pizzas.join(", "))}</span>` : ""}
         <small class="prep-who">${who}</small></span></label>${tools}${ingNoteHTML}</li>`;
     };
     const taskHTML = ([id, t]) => {
@@ -138,6 +138,11 @@ export function initNight(ctx) {
           return `<div class="prep-day" data-prep-days="${n}" data-key="pd-${n}"><h3 class="prep-day-head">${n ? "📅" : "🍕"} ${esc(dayLabel(n, true))}</h3>${taskCat}${catHTML}</div>`;
         }).join("")
       : `<p class="empty">Nothing to prep yet: no pizzas are being made.</p>`;
+    const choices = host ? prepChoices(state.items, rows) : [];
+    const extraForm = choices.length
+      ? `<form class="task-form" data-extra-form data-key="xf"><select aria-label="Something people are bringing" required><option value="">Something people bring…</option>${choices
+          .map((c) => `<option value="${c.key}">${esc(c.name)} · ${esc(c.by)}</option>`).join("")}</select><button>Add to prep</button></form>`
+      : "";
     const taskForm = host
       ? `<form class="task-form" data-task-form data-key="tf"><input maxlength="80" placeholder="Add a prep task, like Make the dough" aria-label="Prep task" required><select aria-label="When">${dayOptions(1)}</select><button>Add</button></form>`
       : "";
@@ -151,7 +156,7 @@ export function initNight(ctx) {
       <ol class="making" data-key="ml">${made.map((id) => pizzaRow(id, all.indexOf(id))).join("") || `<li class="empty">No pizzas yet.</li>`}</ol>
       ${host ? `<p class="add-pizza" data-key="ap"><button type="button" class="secondary" data-add-pizza>+ Add a pizza</button> <small>Extra dough? It goes on the end of the list.</small></p>` : ""}
       <h3 data-key="ph">Prep list</h3>
-      <div class="prep" data-key="pl">${prepHTML}</div>${taskForm}`);
+      <div class="prep" data-key="pl">${prepHTML}</div>${extraForm}${taskForm}`);
     if (hadFocus === "plan") el.querySelector("[data-plan-form] textarea")?.focus();
     if (hadFocus === "note") el.querySelector("[data-note-form] input")?.focus();
     if (hadFocus === "ing") el.querySelector("[data-ing-form] input")?.focus();
@@ -399,6 +404,8 @@ export function initNight(ctx) {
       const n = making().length + Number(d.count);
       if (n < 1 || n > Math.min(50, ordered().length)) return;
       await store.set("meta", { ...state.meta, pizzaGoal: n });
+    } else if (d.delExtra) {
+      await store.set(`night/extra/${d.delExtra}`, null);
     } else if (d.delTask) {
       await store.set(`night/tasks/${d.delTask}`, null);
       await store.set(`night/prep/task_${d.delTask}`, null);
@@ -432,6 +439,11 @@ export function initNight(ctx) {
       editingNote = null;
       await store.set(`night/notes/${f.dataset.noteForm}`, text || null);
       render();
+    } else if (f.matches("[data-extra-form]")) {
+      e.preventDefault();
+      const key = f.querySelector("select").value;
+      if (!/^[a-z0-9_]{1,60}$/.test(key)) return;
+      await store.set(`night/extra/${key}`, true);
     } else if (f.matches("[data-task-form]")) {
       e.preventDefault();
       const text = f.querySelector("input").value.trim().slice(0, 80);

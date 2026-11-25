@@ -106,3 +106,21 @@ test("awards: crowd favorite and most adventurous", async () => {
   assert.equal(awards(pizzas, oven, {}, { a: "P6", b: "P6", c: "P5", d: "P5" }).adventurous, "P5", "a tie goes to the earlier one");
   assert.equal(awards(pizzas, oven, {}, { a: "P4", b: "P4" }).adventurous, null, "only ready pizzas");
 });
+
+test("prepList adds things people bring that the host put on the list, like the dough", async () => {
+  const { prepList, prepChoices } = await import("../lib.js");
+  const pizzas = { A: pz("A", 2, 1, ["Mozzarella"]) };
+  const items = {
+    m: { name: "Mozzarella", category: "cheese", by: "Matt", uid: "matt", amount: "1 lb" },
+    d: { name: "Dough", category: "other", by: "Damian", uid: "damian", amount: "Enough for all the pizzas" },
+    s: { name: "Sparkling Water", category: "other", by: "Brad", uid: "brad" },
+  };
+  const list = prepList(["A"], pizzas, items, ["dough", "gone_thing", "mozzarella"]);
+  assert.deepEqual(list.map((r) => r.name), ["Mozzarella", "Dough"], "added after, by category; unknown keys skipped, no doubles");
+  const dough = list.find((r) => r.name === "Dough");
+  assert.deepEqual(dough, { key: "dough", name: "Dough", category: "other", pizzas: [], bringers: [{ by: "Damian", amount: "Enough for all the pizzas" }], missing: false, extra: true });
+  assert.equal(list[0].extra, undefined, "pizza ingredients aren't extras");
+  // What's left to add: brought things not on the list yet
+  assert.deepEqual(prepChoices(items, list).map((c) => [c.key, c.name, c.by]), [["sparkling_water", "Sparkling Water", "Brad"]]);
+  assert.deepEqual(prepChoices(items, prepList(["A"], pizzas, items)).map((c) => c.key), ["dough", "sparkling_water"]);
+});

@@ -425,3 +425,14 @@ test("party mode: hosts plan prep by day, add prep tasks, and tick early", { ski
   await denied(put(`${S}/night/prep/basil`, true, guest), "guests tick once it starts");
   await allowed(get(`${S}/night/tasks`, guest), "everyone at the party can read the tasks");
 });
+
+test("party mode: hosts put things people bring on the prep list", { skip }, async () => {
+  const S = "parties/nightextra-abc1";
+  await allowed(put(S, nightParty(2 * DAY), "admin"), "seed");
+  await allowed(put(`${S}/night/extra/dough`, true, host), "the host adds the dough");
+  await allowed(put(`${S}/night/extra/garlic_knots`, true, cohost), "so can a cohost");
+  await denied(put(`${S}/night/extra/dough`, true, guest), "not guests");
+  await denied(put(`${S}/night/extra/Dough!`, true, host), "odd key");
+  await denied(put(`${S}/night/extra/dough`, "yes", host), "only true");
+  await allowed(del(`${S}/night/extra/dough`, host), "take it off again");
+});
