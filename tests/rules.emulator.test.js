@@ -400,3 +400,28 @@ test("party mode: hosts add a pizza after the start, and write notes on prep lis
   await denied(put(`${P}/night/ingNotes/basil`, "x".repeat(201), host), "note too long");
   await denied(put(`${P}/night/ingNotes/basil`, "", host), "empty");
 });
+
+test("party mode: hosts plan prep by day, add prep tasks, and tick early", { skip }, async () => {
+  const S = "parties/nightdays-abc1";
+  await allowed(put(S, nightParty(2 * DAY), "admin"), "seed (starts in two days)");
+  await allowed(put(`${S}/night/prepDay/tomato_sauce`, 1, host), "the host sets a day");
+  await allowed(put(`${S}/night/prepDay/mozzarella`, 7, cohost), "a cohost, up to a week before");
+  await denied(put(`${S}/night/prepDay/basil`, 2, guest), "guests can't");
+  await denied(put(`${S}/night/prepDay/basil`, 8, host), "not more than a week");
+  await denied(put(`${S}/night/prepDay/basil`, 1.5, host), "whole days");
+  await denied(put(`${S}/night/prepDay/Basil Leaves`, 1, host), "odd key");
+  const task = { text: "Make the dough", days: 2, createdAt: Date.now() };
+  await allowed(put(`${S}/night/tasks/t1abc`, task, host), "the host adds a prep task");
+  await allowed(put(`${S}/night/tasks/t2abc`, { ...task, days: 0 }, cohost), "so can a cohost");
+  await denied(put(`${S}/night/tasks/t3abc`, task, guest), "not guests");
+  await denied(put(`${S}/night/tasks/t4abc`, { ...task, text: "" }, host), "no empty task");
+  await denied(put(`${S}/night/tasks/t4abc`, { ...task, text: "x".repeat(81) }, host), "task too long");
+  await denied(put(`${S}/night/tasks/t4abc`, { ...task, days: 9 }, host), "a week at most");
+  await denied(put(`${S}/night/tasks/T-4`, task, host), "odd id");
+  await denied(put(`${S}/night/tasks/t4abc`, { ...task, sneaky: 1 }, host), "nothing extra");
+  await allowed(del(`${S}/night/tasks/t2abc`, host), "remove a task");
+  await allowed(put(`${S}/night/prep/task_t1abc`, true, host), "the host ticks off the dough before the start");
+  await allowed(put(`${S}/night/prep/tomato_sauce`, true, cohost), "a cohost ticks early too");
+  await denied(put(`${S}/night/prep/basil`, true, guest), "guests tick once it starts");
+  await allowed(get(`${S}/night/tasks`, guest), "everyone at the party can read the tasks");
+});

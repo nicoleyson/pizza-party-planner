@@ -573,3 +573,48 @@ check("party mode: hosts change the count, add a pizza for extra dough, and note
   assert.deepEqual(extra.votes, undefined, "no vote: voting's closed");
   assert.ok(await js(`!!document.querySelector('#night-oven li[data-oven] ') && [...document.querySelectorAll("#night-oven li[data-oven]")].some((li) => li.textContent.includes("Extra Dough"))`), "it gets an oven row");
 });
+
+check("party mode: hosts plan prep by day, add tasks like the dough, and tick them before the start", async () => {
+  const saved = (path) => js(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"]${path}`);
+  const groups = () => js(`[...document.querySelectorAll("#night-prep [data-prep-days]")].map((g) => g.dataset.prepDays + ":" + [...g.querySelectorAll("li b")].map((b) => b.textContent).join(","))`);
+  await open(nightParty(60 * 60000), "nicole", "Nicole");
+  await click("#preview-night");
+  // Everything starts on the day
+  assert.deepEqual((await groups()).map((g) => g.split(":")[0]), ["0"]);
+  assert.match(await text(`#night-prep [data-prep-days="0"] .prep-day-head`), /day of/);
+
+  // Sauce the day before
+  await js(`(() => { const s = document.querySelector('#night-prep select[data-prep-day="tomato_sauce"]'); s.value = "1"; s.dispatchEvent(new Event("change", { bubbles: true })); return true; })()`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.prepDay?.tomato_sauce === 1`, "the day saved");
+  // The dough, two days before
+  await fill("#night-prep [data-task-form] input", "Make the dough");
+  await js(`document.querySelector("#night-prep [data-task-form] select").value = "2"; true`);
+  await submit("#night-prep [data-task-form]");
+  await until(`Object.values(JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.tasks || {}).some((t) => t.text === "Make the dough" && t.days === 2)`, "the task saved");
+  await until(`document.querySelectorAll("#night-prep [data-prep-days]").length === 3`, "three days");
+  const g = await groups();
+  assert.equal(g[0], "2:Make the dough", "earliest day first");
+  assert.equal(g[1], "1:Tomato sauce");
+  assert.match(g[2], /^0:/);
+  assert.match(await text(`#night-prep [data-prep-days="2"] .prep-day-head`), /2 days before/);
+
+  // The host ticks the dough off before party mode starts
+  const taskId = await js(`Object.keys(JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night.tasks)[0]`);
+  assert.equal(await js(`document.querySelector('#night-prep input[data-prep="task_${taskId}"]').disabled`), false, "hosts tick early");
+  await click(`#night-prep input[data-prep="task_${taskId}"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.prep?.task_${taskId} === true`, "ticked");
+
+  // Guests see the days once it starts, but don't plan them
+  const party = await saved("");
+  party.meta.nightAt = Date.now() - 60000;
+  await js(`(() => { const d = JSON.parse(localStorage["pizza-demo"]); d.parties["${CODE}"] = ${JSON.stringify(party)}; localStorage["pizza-demo"] = JSON.stringify(d); return true; })()`);
+  await open(null, "matt", "Matt");
+  assert.equal((await groups()).length, 3);
+  assert.equal(await js(`!!document.querySelector("#night-prep select[data-prep-day], #night-prep [data-task-form], #night-prep [data-del-task]")`), false, "no planning controls for guests");
+  assert.equal(await js(`document.querySelector('#night-prep input[data-prep="task_${taskId}"]').checked`), true, "the dough shows as done");
+
+  // The host removes a task
+  await open(null, "nicole", "Nicole");
+  await click(`#night-prep [data-del-task="${taskId}"]`);
+  await until(`!document.querySelector('#night-prep [data-del-task="${taskId}"]')`, "the task is gone");
+});

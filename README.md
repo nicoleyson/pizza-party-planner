@@ -164,7 +164,7 @@ Worth checking in Firebase and Google Cloud:
 | `index.html` | The page, including its Content Security Policy |
 | `app.js` | Sign-in, the party screens, saving and live updates |
 | `lib.js` | Small helpers: party codes, escaping, grouping ingredients, ranking pizzas |
-| `night.js` | Party mode: the host preview, game plan, pizza count, extra pizzas, prep list and notes, oven timers, ratings and awards |
+| `night.js` | Party mode: the host preview, game plan, pizza count, extra pizzas, prep list by day with notes and tasks, oven timers, ratings and awards |
 | `pie.js` | The pizza drawings: sauce colors, cheese, topping dots and icons |
 | `style.css` | The look: a checkered tablecloth with paper order tickets on it, and a walnut table in dark mode (follows your device setting) |
 | `theme.js` | The Light / Dark switch. Loads first so the page never flashes the wrong theme |
