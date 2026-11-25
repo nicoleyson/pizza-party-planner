@@ -666,3 +666,50 @@ check("party mode: hosts put the dough someone's bringing on the prep list, and 
   await click(`#night-prep [data-del-extra="dough"]`);
   await until(`!document.querySelector('#night-prep li[data-prep-row="dough"]')`, "off the list");
 });
+
+check("party mode: hosts tag prep items, and everyone filters the prep list by tag", async () => {
+  const saved = () => js(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.prepTags || {}`);
+  const rowsShown = () => js(`[...document.querySelectorAll("#night-prep li[data-prep-row]")].map((li) => li.dataset.prepRow).sort()`);
+  await open(nightParty(60 * 60000), "nicole", "Nicole");
+  await click("#preview-night");
+  assert.equal(await js(`!!document.querySelector("#night-prep [data-filter]")`), false, "no filters until something's tagged");
+
+  await click(`#night-prep [data-edit-tags="mushrooms"]`);
+  await click(`#night-prep [data-tag="mushrooms:cut"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.prepTags?.mushrooms?.cut === true`, "cut saved");
+  await click(`#night-prep [data-tag="mushrooms:cook"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.prepTags?.mushrooms?.cook === true`, "cook saved");
+  assert.equal(await js(`document.querySelector('#night-prep [data-tag="mushrooms:cut"]').getAttribute("aria-pressed")`), "true");
+  await click(`#night-prep [data-close-tags]`);
+  assert.match(await text(`#night-prep li[data-prep-row="mushrooms"] .prep-tags`), /🔪 Cut.*🍳 Cook/);
+  await click(`#night-prep [data-edit-tags="mozzarella"]`);
+  await click(`#night-prep [data-tag="mozzarella:shred"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.prepTags?.mozzarella?.shred === true`, "shred saved");
+  await click(`#night-prep [data-close-tags]`);
+
+  // Filters: only tags in use, with how many
+  assert.match(await text(`#night-prep [data-filter="cut"]`), /🔪 Cut 1/);
+  assert.equal(await js(`!!document.querySelector('#night-prep [data-filter="thaw"]')`), false, "unused tags don't show");
+  const all = await rowsShown();
+  await click(`#night-prep [data-filter="cut"]`);
+  assert.deepEqual(await rowsShown(), ["mushrooms"]);
+  await click(`#night-prep [data-filter="shred"]`);
+  assert.deepEqual(await rowsShown(), ["mozzarella"]);
+  await click(`#night-prep [data-filter="all"]`);
+  assert.deepEqual(await rowsShown(), all);
+
+  // Tapping a tag again takes it off
+  await click(`#night-prep [data-edit-tags="mushrooms"]`);
+  await click(`#night-prep [data-tag="mushrooms:cook"]`);
+  await until(`!JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.prepTags?.mushrooms?.cook`, "cook removed");
+  assert.deepEqual(await saved(), { mushrooms: { cut: true }, mozzarella: { shred: true } });
+
+  // Guests see tags and filter, but don't edit them
+  const party = await js(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"]`);
+  party.meta.nightAt = Date.now() - 60000;
+  await js(`(() => { const d = JSON.parse(localStorage["pizza-demo"]); d.parties["${CODE}"] = ${JSON.stringify(party)}; localStorage["pizza-demo"] = JSON.stringify(d); return true; })()`);
+  await open(null, "matt", "Matt");
+  assert.equal(await js(`!!document.querySelector("#night-prep [data-edit-tags], #night-prep [data-tag]")`), false, "no tag editing for guests");
+  await click(`#night-prep [data-filter="shred"]`);
+  assert.deepEqual(await rowsShown(), ["mozzarella"]);
+});

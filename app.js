@@ -1105,6 +1105,7 @@ function cleanNight(n) {
     order: Object.values(obj(n.order)).filter((id) => typeof id === "string" && SAFE_ID.test(id)),
     notes: Object.fromEntries(Object.entries(obj(n.notes)).filter(([k, v]) => SAFE_ID.test(k) && typeof v === "string")),
     prep: Object.fromEntries(Object.entries(obj(n.prep)).filter(([k, v]) => /^[a-z0-9_]{1,60}$/.test(k) && v === true)),
+    prepTags: Object.fromEntries(Object.entries(obj(n.prepTags)).filter(([k, v]) => /^[a-z0-9_]{1,60}$/.test(k) && v && typeof v === "object")),
     extra: Object.fromEntries(Object.entries(obj(n.extra)).filter(([k, v]) => /^[a-z0-9_]{1,60}$/.test(k) && v === true)),
     prepDay: Object.fromEntries(Object.entries(obj(n.prepDay)).filter(([k, v]) => /^[a-z0-9_]{1,60}$/.test(k) && Number.isInteger(v) && v >= 0 && v <= 7)),
     tasks: Object.fromEntries(Object.entries(obj(n.tasks)).filter(([k, t]) => /^[a-z0-9]{1,30}$/.test(k) && t && typeof t.text === "string" && Number.isInteger(t.days) && t.days >= 0 && t.days <= 7)

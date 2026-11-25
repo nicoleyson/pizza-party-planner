@@ -9,6 +9,11 @@ export function initNight(ctx) {
   let editingPlan = false;
   let editingNote = null; // pizza id
   let editingIng = null; // prep list key
+  let editingTags = null; // prep list key whose tags are open
+  let prepFilter = "all"; // which tag the prep list shows (only on this phone)
+  // What a prep item needs. Tapping a filter shows just those.
+  const TAGS = { cut: "🔪 Cut", cook: "🍳 Cook", shred: "🧀 Shred", thaw: "🧊 Thaw", ready: "✅ Ready as is" };
+  const tagsOf = (key) => Object.keys(TAGS).filter((t) => state.night.prepTags[key]?.[t] === true);
 
   const isShowing = () => ctx.night() || (previewing && ctx.canManage() && !ctx.over() && typeof state.meta.nightAt === "number");
   // Prep days: 0 is the party day, up to 7 days before
@@ -101,6 +106,17 @@ export function initNight(ctx) {
     };
     const dayOf = (key) => prepDays(state.night.prepDay[key]);
     const tasks = Object.entries(state.night.tasks).sort(([, a], [, b]) => a.createdAt - b.createdAt);
+    const badges = (key) => {
+      const tags = tagsOf(key);
+      return tags.length ? `<span class="prep-tags">${tags.map((t) => `<span class="tag">${TAGS[t]}</span>`).join("")}</span>` : "";
+    };
+    const tagBtn = (key, name) => (editingTags === key ? "" : `<button type="button" class="ghost icon-btn" data-edit-tags="${key}" aria-label="Tags for ${esc(name)}" data-tip="Cut, cook…"><span>🏷️</span></button>`);
+    const tagPicker = (key) => (editingTags === key && host
+      ? `<div class="tag-picker" data-tag-picker="${key}">${Object.entries(TAGS)
+          .map(([t, label]) => `<button type="button" class="tag-chip" data-tag="${key}:${t}" aria-pressed="${tagsOf(key).includes(t)}">${label}</button>`).join("")}
+          <button type="button" class="ghost" data-close-tags>Done</button></div>`
+      : "");
+    const shown = (key) => prepFilter === "all" || tagsOf(key).includes(prepFilter);
     const rowHTML = (r) => {
       const got = !!state.night.prep[r.key];
       const ingNote = state.night.ingNotes[r.key];
@@ -108,30 +124,41 @@ export function initNight(ctx) {
         ? `<form class="note-form" data-ing-form="${r.key}"><input maxlength="200" value="${esc(ingDraft ?? ingNote ?? "")}" aria-label="Prep note for ${esc(r.name)}" placeholder="Shred it, slice it thin, warm it up…"><button>Save</button><button type="button" class="secondary" data-cancel-ing>Cancel</button></form>`
         : ingNote ? `<p class="prep-note">📝 ${esc(ingNote)}</p>` : "";
       const tools = host
-        ? `<span class="prep-tools"><select data-prep-day="${r.key}" aria-label="When to prep ${esc(r.name)}">${dayOptions(dayOf(r.key), true)}</select>${editingIng === r.key ? "" : `<button type="button" class="ghost icon-btn prep-note-btn" data-edit-ing="${r.key}" aria-label="Prep note for ${esc(r.name)}" data-tip="Prep note"><span>📝</span></button>`}${r.extra ? `<button type="button" class="ghost icon-btn" data-del-extra="${r.key}" aria-label="Take ${esc(r.name)} off the prep list" data-tip="Take off the list"><span>✕</span></button>` : ""}</span>`
+        ? `<span class="prep-tools"><select data-prep-day="${r.key}" aria-label="When to prep ${esc(r.name)}">${dayOptions(dayOf(r.key), true)}</select>${tagBtn(r.key, r.name)}${editingIng === r.key ? "" : `<button type="button" class="ghost icon-btn prep-note-btn" data-edit-ing="${r.key}" aria-label="Prep note for ${esc(r.name)}" data-tip="Prep note"><span>📝</span></button>`}${r.extra ? `<button type="button" class="ghost icon-btn" data-del-extra="${r.key}" aria-label="Take ${esc(r.name)} off the prep list" data-tip="Take off the list"><span>✕</span></button>` : ""}</span>`
         : "";
       const who = r.missing
         ? `<span class="prep-missing">nobody's bringing this ⚠️</span>`
         : esc(r.bringers.map((b) => (b.amount ? `${b.by}, ${b.amount}` : b.by)).join(" · "));
       return `<li data-prep-row="${r.key}" data-key="pr-${r.key}"><label class="${got ? "got" : ""}">${tick(r.key)}
-        <span class="prep-what"><b>${esc(r.name)}</b> ${r.pizzas.length ? `<span class="prep-n">${r.pizzas.length} pizza${r.pizzas.length === 1 ? "" : "s"}: ${esc(r.pizzas.join(", "))}</span>` : ""}
-        <small class="prep-who">${who}</small></span></label>${tools}${ingNoteHTML}</li>`;
+        <span class="prep-what"><b>${esc(r.name)}</b>${badges(r.key)} ${r.pizzas.length ? `<span class="prep-n">${r.pizzas.length} pizza${r.pizzas.length === 1 ? "" : "s"}: ${esc(r.pizzas.join(", "))}</span>` : ""}
+        <small class="prep-who">${who}</small></span></label>${tools}${tagPicker(r.key)}${ingNoteHTML}</li>`;
     };
     const taskHTML = ([id, t]) => {
       const key = `task_${id}`;
       const tools = host
-        ? `<span class="prep-tools"><select data-task-day="${id}" aria-label="When to do ${esc(t.text)}">${dayOptions(t.days, true)}</select><button type="button" class="ghost icon-btn" data-del-task="${id}" aria-label="Remove ${esc(t.text)}" data-tip="Remove"><span>✕</span></button></span>`
+        ? `<span class="prep-tools"><select data-task-day="${id}" aria-label="When to do ${esc(t.text)}">${dayOptions(t.days, true)}</select>${tagBtn(key, t.text)}<button type="button" class="ghost icon-btn" data-del-task="${id}" aria-label="Remove ${esc(t.text)}" data-tip="Remove"><span>✕</span></button></span>`
         : "";
-      return `<li data-prep-row="${key}" data-key="pt-${id}"><label class="${state.night.prep[key] ? "got" : ""}">${tick(key)}<span class="prep-what"><b>${esc(t.text)}</b></span></label>${tools}</li>`;
+      return `<li data-prep-row="${key}" data-key="pt-${id}"><label class="${state.night.prep[key] ? "got" : ""}">${tick(key)}<span class="prep-what"><b>${esc(t.text)}</b>${badges(key)}</span></label>${tools}${tagPicker(key)}</li>`;
     };
+    // Filter chips: only tags in use, with how many items have each
+    const allKeys = [...rows.map((r) => r.key), ...tasks.map(([id]) => `task_${id}`)];
+    const counts = Object.fromEntries(Object.keys(TAGS).map((t) => [t, allKeys.filter((k) => tagsOf(k).includes(t)).length]));
+    const used = Object.keys(TAGS).filter((t) => counts[t]);
+    if (!used.includes(prepFilter)) prepFilter = "all";
+    const filterHTML = used.length
+      ? `<div class="prep-filter" data-key="pf" role="group" aria-label="Show"><button type="button" class="tag-chip" data-filter="all" aria-pressed="${prepFilter === "all"}">All</button>${used
+          .map((t) => `<button type="button" class="tag-chip" data-filter="${t}" aria-pressed="${prepFilter === t}">${TAGS[t]} <span class="chip-n">${counts[t]}</span></button>`).join("")}</div>`
+      : "";
+    const shownRows = rows.filter((r) => shown(r.key));
+    const shownTasks = tasks.filter(([id]) => shown(`task_${id}`));
     // Group by day, earliest first; inside each day, tasks then sauces, cheeses and toppings
-    const days = [...new Set([...rows.map((r) => dayOf(r.key)), ...tasks.map(([, t]) => t.days)])].sort((a, b) => b - a);
+    const days = [...new Set([...shownRows.map((r) => dayOf(r.key)), ...shownTasks.map(([, t]) => t.days)])].sort((a, b) => b - a);
     const prepHTML = days.length
       ? days.map((n) => {
-          const dayTasks = tasks.filter(([, t]) => t.days === n);
+          const dayTasks = shownTasks.filter(([, t]) => t.days === n);
           const taskCat = dayTasks.length ? `<div class="prep-cat" data-key="pc-tasks"><h4><span class="emo">📋</span>Tasks</h4><ul class="prep-list">${dayTasks.map(taskHTML).join("")}</ul></div>` : "";
           const catHTML = cats.map((cat) => {
-            const list = rows.filter((r) => r.category === cat && dayOf(r.key) === n);
+            const list = shownRows.filter((r) => r.category === cat && dayOf(r.key) === n);
             if (!list.length) return "";
             return `<div class="prep-cat" data-key="pc-${cat}"><h4><span class="emo">${ctx.EMOJI[cat]}</span>${ctx.CATS[cat]}</h4><ul class="prep-list">${list.map(rowHTML).join("")}</ul></div>`;
           }).join("");
@@ -156,7 +183,7 @@ export function initNight(ctx) {
       <ol class="making" data-key="ml">${made.map((id) => pizzaRow(id, all.indexOf(id))).join("") || `<li class="empty">No pizzas yet.</li>`}</ol>
       ${host ? `<p class="add-pizza" data-key="ap"><button type="button" class="secondary" data-add-pizza>+ Add a pizza</button> <small>Extra dough? It goes on the end of the list.</small></p>` : ""}
       <h3 data-key="ph">Prep list</h3>
-      <div class="prep" data-key="pl">${prepHTML}</div>${extraForm}${taskForm}`);
+      ${filterHTML}<div class="prep" data-key="pl">${prepHTML}</div>${extraForm}${taskForm}`);
     if (hadFocus === "plan") el.querySelector("[data-plan-form] textarea")?.focus();
     if (hadFocus === "note") el.querySelector("[data-note-form] input")?.focus();
     if (hadFocus === "ing") el.querySelector("[data-ing-form] input")?.focus();
@@ -404,6 +431,19 @@ export function initNight(ctx) {
       const n = making().length + Number(d.count);
       if (n < 1 || n > Math.min(50, ordered().length)) return;
       await store.set("meta", { ...state.meta, pizzaGoal: n });
+    } else if (d.editTags) {
+      editingTags = d.editTags;
+      render();
+    } else if ("closeTags" in d) {
+      editingTags = null;
+      render();
+    } else if (d.tag) {
+      const [key, t] = d.tag.split(":");
+      if (!ctx.canManage() || !(t in TAGS)) return;
+      await store.set(`night/prepTags/${key}/${t}`, tagsOf(key).includes(t) ? null : true);
+    } else if (d.filter) {
+      prepFilter = d.filter;
+      render();
     } else if (d.delExtra) {
       await store.set(`night/extra/${d.delExtra}`, null);
     } else if (d.delTask) {

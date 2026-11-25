@@ -436,3 +436,17 @@ test("party mode: hosts put things people bring on the prep list", { skip }, asy
   await denied(put(`${S}/night/extra/dough`, "yes", host), "only true");
   await allowed(del(`${S}/night/extra/dough`, host), "take it off again");
 });
+
+test("party mode: hosts tag prep items (cut, cook, shred, thaw, ready as is)", { skip }, async () => {
+  const S = "parties/nighttags-abc1";
+  await allowed(put(S, nightParty(2 * DAY), "admin"), "seed");
+  await allowed(put(`${S}/night/prepTags/mushrooms`, { cut: true, cook: true }, host), "the host tags an item");
+  await allowed(put(`${S}/night/prepTags/mozzarella/shred`, true, cohost), "a cohost adds a tag");
+  await allowed(put(`${S}/night/prepTags/task_abc123/thaw`, true, host), "tasks can be tagged too");
+  await allowed(put(`${S}/night/prepTags/tomato_sauce/ready`, true, host), "ready as is");
+  await allowed(del(`${S}/night/prepTags/mushrooms/cook`, host), "remove a tag");
+  await denied(put(`${S}/night/prepTags/basil/cut`, true, guest), "not guests");
+  await denied(put(`${S}/night/prepTags/basil/juggle`, true, host), "only the known tags");
+  await denied(put(`${S}/night/prepTags/basil/cut`, "yes", host), "only true");
+  await denied(put(`${S}/night/prepTags/Basil Leaves/cut`, true, host), "odd key");
+});

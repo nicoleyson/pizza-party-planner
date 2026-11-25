@@ -606,6 +606,14 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .prep-tools select { width: auto; min-height: 0; padding: 4px 24px 4px 8px; background-position: right 7px center; font-size: .85rem; word-spacing: normal; border-radius: 8px; }
 .prep-day + .prep-day { margin-top: 14px; padding-top: 12px; border-top: 2px dashed var(--paper-edge); }
 .prep-day-head { margin: 0 0 2px; font-size: 1rem; }
+.prep-tags { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 6px; vertical-align: middle; }
+.tag { font-size: .75rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--field); border: 1.5px solid var(--paper-edge); white-space: nowrap; }
+.tag-chip { min-height: 34px; padding: 4px 12px; border-radius: 999px; font-size: .85rem; background: var(--paper); color: var(--ink); border: 2px solid var(--paper-edge); box-shadow: none; }
+.tag-chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.chip-n { opacity: .7; font-weight: 400; margin-left: 2px; }
+[data-edit-tags] span { filter: saturate(1.6) contrast(1.2); }
+.prep-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.prep-list > li > .tag-picker { grid-column: 1 / -1; margin-left: 30px; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .task-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
 .task-form input { flex: 1 1 180px; min-width: 0; }
 .task-form select { width: auto; flex: none; }
