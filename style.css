@@ -570,3 +570,34 @@ ul.list li.editing { display: block; padding: 8px 0; }
     linear-gradient(90deg, #3e251a 0 160px, #33201a 160px 320px, #452a1d 320px 480px, #39231a 480px 640px);
   background-size: 100% 100%, auto, auto, auto, 640px 100%;
 }
+
+/* ── 🔥 Party mode ── */
+.night { display: grid; gap: 34px; }
+.night[hidden], .planning-body[hidden] { display: none; }
+.planning, .planning-body { display: grid; gap: 34px; }
+.planning-toggle { justify-self: center; }
+.night-banner { text-align: center; }
+.night-banner .row { justify-content: center; margin-top: 8px; }
+.night-part:empty { display: none; }
+.night-part h3 { margin: 18px 0 8px; font-size: 1rem; }
+.plan-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.plan-head h3 { margin: 0; }
+.plan-text { white-space: pre-line; margin: 6px 0 0; }
+.plan-text.empty { color: var(--muted); }
+.plan-form { display: grid; gap: 8px; margin-top: 6px; }
+.making { margin: 0; padding-left: 1.4em; display: grid; gap: 10px; }
+.making-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.making-tools { display: inline-flex; gap: 2px; }
+.making-picks { color: var(--muted); }
+.prep-note { margin: 4px 0 0; font-size: .9rem; }
+.note-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.note-form input { flex: 1; min-width: 160px; }
+.prep-cat h4 { margin: 12px 0 6px; font-size: .9rem; display: flex; align-items: center; gap: 6px; }
+.prep-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.prep-list label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.prep-list input { width: 20px; height: 20px; min-height: 0; margin-top: 2px; flex: none; }
+.prep-what { display: grid; gap: 1px; }
+.prep-n { font-size: .9rem; }
+.prep-who { color: var(--muted); }
+.prep-missing { color: var(--red); font-weight: 700; }
+.prep-list label.got b { text-decoration: line-through; color: var(--muted); }

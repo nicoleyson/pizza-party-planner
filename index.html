@@ -120,6 +120,7 @@
       <label class="me">Your name <input id="my-name" maxlength="40" placeholder="Matt" autocomplete="given-name"></label>
       <button class="secondary" id="copy-link">Copy invite link</button>
       <button class="secondary" id="guest-btn" hidden>Guest list</button>
+      <button class="secondary" id="preview-night" hidden>🔥 Preview party mode</button>
     </div>
     <div id="guest-panel" class="guest-panel" hidden>
       <label class="toggle"><input type="checkbox" id="guest-only"> <span><b>Invite-only</b>: only people on this list (and you) can see or join the party</span></label>
@@ -142,6 +143,16 @@
   </header>
 
   <main>
+    <!-- Party mode: prep, oven, ratings (night.js) -->
+    <section class="night" id="night-section" hidden>
+      <div id="night-banner" class="night-banner"></div>
+      <div id="night-prep" class="ticket night-part"></div>
+      <div id="night-oven" class="ticket night-part"></div>
+      <div id="night-ratings" class="ticket night-part"></div>
+    </section>
+    <div id="planning" class="planning">
+    <button type="button" class="secondary planning-toggle" id="planning-toggle" aria-expanded="false" aria-controls="planning-body" hidden>📋 Planning: who's bringing what, and the votes</button>
+    <div id="planning-body" class="planning-body">
     <section class="ticket" id="bring-section">
       <h2><span class="h-emoji" aria-hidden="true">🧺</span>What are you bringing? <button type="button" class="list-btn" id="list-btn" aria-expanded="false" aria-controls="grocery" hidden></button></h2>
       <p id="items-lede" class="lede" hidden></p>
@@ -201,6 +212,8 @@
       <p id="tally-lede" class="lede"></p>
       <ol id="tally" class="tally"></ol>
     </section>
+    </div>
+    </div>
 
   </main>
 </div>

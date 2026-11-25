@@ -321,11 +321,89 @@ check("the host schedules party mode, and voting closes at the start time", asyn
   assert.equal(await js(`[...document.querySelectorAll("#pizzas [data-vote]")].some((b) => !b.disabled)`), false, "no voting");
   assert.match(await text("#propose-section"), /Voting closed: it's party time/);
   assert.equal(await js(`!!document.querySelector("#propose-section #pizza-form:not([hidden])")`), false, "no pizza builder");
-  assert.equal(await visible("#tally-section"), true);
+  assert.equal(await visible("#tally-section"), false, "planning folds away in party mode");
+  await click("#planning-toggle");
+  assert.equal(await visible("#tally-section"), true, "the tally is one tap away");
 
   // Before it starts, voting works
   const soon = { ...party, meta: { ...meta, nightAt: Date.now() + 60000, date: isoDay(0), endsAt: endOf(isoDay(0)) } };
   await open(soon, "matt", "Matt");
   await js(`document.querySelector("#pizzas [data-vote]").click(); true`);
   await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].pizzas.z1.votes.matt`, "a vote before party mode");
+});
+
+// A party happening today, with party mode `startsIn` ms from now
+const nightParty = (startsIn, extra = {}) => {
+  const party = basicParty();
+  const today = isoDay(0);
+  const at = new Date(Date.now() + startsIn);
+  party.meta = { ...party.meta, date: today, endsAt: endOf(today), pizzaGoal: 2, nightTime: `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`, nightAt: Date.now() + startsIn, bakeMinutes: 1, ...extra };
+  party.pizzas = {
+    z1: { name: "Basil Instinct", by: "Nicole", uid: "nicole", createdAt: 1, picks: ["Tomato sauce", "Mozzarella", "Fresh basil"], votes: { nicole: "Nicole", damian: "Damian", brad: "Brad" } },
+    z2: { name: "Fungi Fiesta", by: "Brad", uid: "brad", createdAt: 2, picks: ["Mozzarella", "Mushrooms", "Goat cheese"], votes: { brad: "Brad", matt: "Matt" } },
+    z3: { name: "Hot Honey", by: "Matt", uid: "matt", createdAt: 3, picks: ["Tomato sauce"], votes: { matt: "Matt" } },
+  };
+  return party;
+};
+
+check("the host previews party mode and preps; guests get it at the start time", async () => {
+  await open(nightParty(60 * 60000), "matt", "Matt");
+  assert.equal(await visible("#preview-night"), false, "guests can't preview");
+  assert.equal(await visible("#night-section"), false);
+
+  await open(null, "nicole", "Nicole");
+  await click("#preview-night");
+  assert.equal(await visible("#night-section"), true);
+  assert.match(await text("#night-banner"), /guests will see this at/);
+  assert.equal(await visible("#planning-body"), false, "planning folds away");
+  assert.equal(await visible("#planning-toggle"), true);
+
+  // Game plan
+  await click("#night-prep [data-edit-plan]");
+  await fill("#night-prep [data-plan-form] textarea", "Oven to 500° at 6\nDamian on toppings");
+  await submit("#night-prep [data-plan-form]");
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.plan?.startsWith("Oven")`, "the plan saved");
+  assert.equal(await js(`getComputedStyle(document.querySelector("#night-prep .plan-text")).whiteSpace`), "pre-line", "line breaks kept");
+
+  // Prep note on the second pizza
+  await click(`#night-prep [data-edit-note="z2"]`);
+  await fill(`#night-prep [data-note-form="z2"] input`, "slice mushrooms thin");
+  await submit(`#night-prep [data-note-form="z2"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.notes?.z2 === "slice mushrooms thin"`, "the note saved");
+
+  // Move the first pizza down: the order changes and only 2 get made
+  await click(`#night-prep [data-move="z1:1"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.order?.join() === "z2,z1,z3"`, "the new order");
+  assert.deepEqual(await js(`[...document.querySelectorAll("#night-prep [data-making]")].map((li) => li.dataset.making)`), ["z2", "z1"]);
+
+  // Prep list: counts, which pizzas, who's bringing it, and what nobody's bringing
+  const row = (name) => `[...document.querySelectorAll("#night-prep [data-prep-row]")].find((r) => r.textContent.includes(${JSON.stringify(name)}))?.textContent.replace(/\\s+/g, " ")`;
+  assert.match(await js(row("Mozzarella")), /2 pizzas.*Fungi Fiesta, Basil Instinct.*Matt/);
+  assert.match(await js(row("Goat cheese")), /nobody's bringing this ⚠️/);
+
+  await click("#night-banner [data-back-to-planning]");
+  assert.equal(await visible("#night-section"), false);
+  assert.equal(await visible("#planning-body"), true);
+
+  // Start now
+  await click("#preview-night");
+  await js(`window.confirm = () => true; true`);
+  await click("#night-banner [data-start-now]");
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].meta.nightAt <= Date.now()`, "party mode started");
+  assert.match((await saved()).meta.nightTime, /^\d\d:\d\d$/);
+
+  // A guest, now that it's started: tick prep, but no host controls
+  await open(null, "matt", "Matt");
+  assert.equal(await visible("#night-section"), true, "no preview needed");
+  assert.equal(await js(`!!document.querySelector("#night-prep [data-edit-plan], #night-prep [data-move], #night-prep [data-edit-note]")`), false, "host controls hidden");
+  await js(`document.querySelector('#night-prep [data-prep="mozzarella"]').click(); true`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.prep?.mozzarella === true`, "the tick saved");
+
+  // Review Focus 2: the host moves party mode later, and it's back to planning (ticks kept)
+  const later = await saved();
+  later.meta.nightAt = Date.now() + 60 * 60000;
+  await open(later, "matt", "Matt");
+  assert.equal(await visible("#night-section"), false, "back to planning");
+  assert.equal(await js(`[...document.querySelectorAll("#pizzas [data-vote]")].some((b) => !b.disabled)`), true, "voting reopens");
+  assert.equal((await saved()).night.prep.mozzarella, true, "ticks kept");
 });

@@ -1,6 +1,7 @@
 import { pieHTML, ICONS, ICON_GROUPS, safeIcon, guessIcon, SAUCE_LOOKS, CHEESE_LOOKS } from "./pie.js";
 import { SAFE_ID, parseCode, newCode, esc, cleanIds, cohostIds, voteCount, rankPizzas, groupItems, ingredientKey, ingredientIndex, nextAka, totalAmount, partyEndsAt, pizzaGoal, isOver, formatPartyDate, nightFields, isNight, todayISO, localDemo } from "./lib.js";
 import { morph } from "./morph.js";
+import { initNight } from "./night.js";
 
 const CATS = { sauce: "Sauces", cheese: "Cheeses", topping: "Toppings", other: "Dough, drinks and more" };
 const EMOJI = { sauce: "🍅", cheese: "🧀", topping: "✨", other: "🥖" };
@@ -317,6 +318,15 @@ function startParty(code) {
   // Party mode: from the host's start time until the party's over. Voting closes then.
   const night = () => isNight(state.meta, db.now());
   const voting = () => !over() && !night();
+  const nightUI = initNight({
+    $, esc, state, store, morph, toast, CATS, EMOJI,
+    now: () => db.now(), stamp: () => db.stamp(), uid,
+    night, over: () => over(), canManage: () => canManage(), render: () => render(),
+    myName: () => myName(), iconOf: (it) => iconOf(it),
+  });
+  // While party mode shows, the planning sections fold away under one button
+  let planningOpen = true, wasShowing = false;
+  $("planning-toggle").addEventListener("click", () => { planningOpen = !planningOpen; render(); });
   // The host made the party. Cohosts (picked by the host) can change its settings and guest list too.
   const isOwner = () => state.meta.uid === uid;
   const canManage = () => isOwner() || state.cohosts.includes(uid);
@@ -438,6 +448,12 @@ function startParty(code) {
     renderDiets();
     renderBuilder();
     renderPizzas();
+    nightUI.render();
+    const showing = nightUI.isShowing();
+    if (showing !== wasShowing) { planningOpen = !showing; wasShowing = showing; }
+    $("planning-toggle").hidden = !showing;
+    $("planning-toggle").setAttribute("aria-expanded", String(planningOpen));
+    $("planning-body").hidden = !planningOpen;
   }
 
   // Re-draw the moment the party wraps up, even if nobody touches anything.
