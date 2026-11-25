@@ -147,6 +147,12 @@ test("the deploy publishes every file the page loads", () => {
   for (const m of read("index.html").matchAll(/(?:src|href)="([\w.-]+\.(?:js|css|svg))"/g)) used.add(m[1]);
   for (const m of read("style.css").matchAll(/url\("?([\w.-]+\.(?:svg|png|jpg|webp))"?\)/g)) used.add(m[1]);
   for (const m of read("app.js").matchAll(/from "\.\/([\w.-]+\.js)"/g)) used.add(m[1]);
+  // ...and whatever those modules import in turn; each one's imports get the version stamp too
+  for (const f of [...used].filter((f) => f.endsWith(".js") && !f.startsWith("config") && f !== "app.js" && f !== "theme.js")) {
+    const imports = [...read(f).matchAll(/from "\.\/([\w.-]+\.js)"/g)].map((m) => m[1]);
+    imports.forEach((i) => used.add(i));
+    if (imports.length) assert.ok(workflow.includes(`_site/${f}`), `${f}'s imports aren't version-stamped in pages.yml`);
+  }
   for (const f of used) assert.ok(copied.includes(f), `${f} isn't copied to the site in pages.yml`);
 });
 
