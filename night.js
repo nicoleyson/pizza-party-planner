@@ -1,7 +1,7 @@
 // 🔥 Party mode: what the page shows from the host's start time until the party's over.
 // Prep (game plan, the pizzas being made, the prep list), the oven, and ratings & awards.
 // app.js owns the data and hands it over in `ctx`; this file only draws it and saves changes.
-import { nightFields, makingList, prepList, pizzaGoal, ovenState, clock, bakeMinutes } from "./lib.js";
+import { nightFields, makingList, prepList, pizzaGoal, ovenState, clock, bakeMinutes, awards } from "./lib.js";
 
 export function initNight(ctx) {
   const { $, esc, state, store, morph, toast } = ctx;
@@ -20,10 +20,12 @@ export function initNight(ctx) {
     $("preview-night").hidden = !(host && typeof state.meta.nightAt === "number" && !ctx.night() && !ctx.over() && !previewing);
     const show = isShowing();
     $("night-section").hidden = !show;
+    renderKeepsake();
     if (!show) return;
     renderBanner();
     renderPrep(host);
     renderOven();
+    renderRatings();
   }
 
   function renderBanner() {
@@ -212,11 +214,78 @@ export function initNight(ctx) {
     }
   }
 
+  // ── 3. Ratings & awards ──
+  // Rate a pizza once it's out of the oven; open until the end of the day after the party.
+  const ratingsOpen = () => typeof state.meta.endsAt !== "number" || ctx.now() < state.meta.endsAt + 86400000;
+  const madeIds = () => Object.keys(state.night.oven)
+    .filter((id) => state.pizzas[id] && typeof state.night.oven[id].readyAt === "number")
+    .sort((a, b) => state.night.oven[a].readyAt - state.night.oven[b].readyAt);
+  const result = () => awards(state.pizzas, state.night.oven, state.ratings, state.adventurous);
+
+  function awardsHTML(r) {
+    const line = (label, id, why) => `<li><b>${label}</b> ${esc(state.pizzas[id].name)} <small>${why}</small></li>`;
+    const items = [
+      r.crowd && line("🏆 Crowd favorite", r.crowd, `★ ${r.avg[r.crowd].avg.toFixed(1)} from ${r.avg[r.crowd].n}`),
+      r.adventurous && line("🌶️ Most adventurous", r.adventurous, `${r.picks[r.adventurous]} picks`),
+    ].filter(Boolean);
+    return `<ul class="awards" data-key="awards">${items.join("") || `<li class="empty">Awards show up once a couple of people have rated.</li>`}</ul>`;
+  }
+
+  function rateRow(id, r, canRate) {
+    const p = state.pizzas[id];
+    const mine = state.ratings[id]?.[ctx.uid];
+    const avg = r.avg[id];
+    const spicy = state.adventurous[ctx.uid] === id;
+    const stars = canRate
+      ? `<span class="stars" role="group" aria-label="Rate ${esc(p.name)}">${[1, 2, 3, 4, 5]
+          .map((n) => `<button type="button" class="star ${mine >= n ? "on" : ""}" data-rate="${id}:${n}" aria-pressed="${mine === n}" aria-label="${n} star${n === 1 ? "" : "s"}">★</button>`)
+          .join("")}</span>
+         <button type="button" class="spicy ${spicy ? "on" : ""}" data-spicy="${id}" aria-pressed="${spicy}" data-tip="Most adventurous">🌶️${r.picks[id] ? ` ${r.picks[id]}` : ""}</button>`
+      : r.picks[id] ? `<span class="spicy-count">🌶️ ${r.picks[id]}</span>` : "";
+    return `<li class="rate-row" data-made="${id}" data-key="r-${id}"><b>${esc(p.name)}</b>
+      <span class="avg">${avg ? `★ ${Number(avg.avg.toFixed(1))} (${avg.n})` : "no ratings yet"}</span>${stars}</li>`;
+  }
+
+  function renderRatings() {
+    const r = result();
+    const made = madeIds();
+    morph($("night-ratings"), `<h2 data-key="h"><span class="h-emoji" aria-hidden="true">⭐</span>Ratings &amp; awards</h2>${awardsHTML(r)}
+      <p class="lede" data-key="l">Rate each pizza once it's out of the oven. Tap 🌶️ on the one you think was the most adventurous.</p>
+      <ul class="rates" data-key="list">${made.map((id) => rateRow(id, r, ratingsOpen())).join("") || `<li class="empty">Nothing's out of the oven yet.</li>`}</ul>`);
+  }
+
+  // After the party: what got made, in the order it came out, with the awards
+  function renderKeepsake() {
+    const made = madeIds();
+    const show = ctx.over() && made.length > 0;
+    $("keepsake").hidden = !show;
+    if (!show) return;
+    const r = result();
+    morph($("keepsake"), `<h2 data-key="h"><span class="h-emoji" aria-hidden="true">🏆</span>What we made</h2>${awardsHTML(r)}
+      ${ratingsOpen() ? `<p class="lede" data-key="l">Ratings are open until the end of tomorrow.</p>` : ""}
+      <ol class="rates" data-key="list">${made.map((id) => rateRow(id, r, ratingsOpen())).join("")}</ol>`);
+  }
+
+  async function rate(e) {
+    const b = e.target.closest("[data-rate], [data-spicy]");
+    if (!b || !ratingsOpen()) return false;
+    if (b.dataset.rate) {
+      const [id, n] = b.dataset.rate.split(":");
+      await store.set(`ratings/${id}/${ctx.uid}`, Number(n));
+    } else {
+      const id = b.dataset.spicy;
+      await store.set(`adventurous/${ctx.uid}`, state.adventurous[ctx.uid] === id ? null : id);
+    }
+    return true;
+  }
+  $("keepsake").addEventListener("click", rate);
+
   // ── Changes ──
   $("preview-night").addEventListener("click", () => { previewing = true; ctx.render(); $("night-section").scrollIntoView({ behavior: "smooth", block: "start" }); });
 
   $("night-section").addEventListener("click", async (e) => {
     unlockAudio(); // phones only play sound after a tap
+    if (await rate(e)) return;
     const b = e.target.closest("button");
     if (!b) return;
     const d = b.dataset;

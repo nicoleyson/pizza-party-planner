@@ -612,3 +612,14 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .wake { margin-top: 12px; }
 @keyframes check-pulse { 50% { box-shadow: 0 0 0 4px var(--red); } }
 @media (prefers-reduced-motion: reduce) { .oven-row.check { animation: none; } }
+.awards { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.awards li { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.awards small, .avg { color: var(--muted); }
+.rates { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.keepsake ol.rates { padding-left: 1.4em; list-style: decimal; }
+.rate-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.stars { display: inline-flex; }
+.star { background: none; border: 0; padding: 0 3px; min-height: 36px; font-size: 1.4rem; color: var(--paper-edge); cursor: pointer; box-shadow: none; }
+.star.on { color: var(--red); }
+.spicy { min-height: 36px; padding: 0 10px; }
+.spicy:not(.on) { background: var(--paper); color: var(--ink); border: 2px solid var(--paper-edge); }

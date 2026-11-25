@@ -456,3 +456,49 @@ check("oven: racks, a countdown, check it, +2 min, ready and stop", async () => 
   assert.equal(await visible(`#night-oven [data-oven="z2"]`), true, "still in the oven list");
   await js(`delete localStorage.clockSkew; true`);
 });
+
+check("rate ready pizzas, pick the most adventurous, and the keepsake shows the awards", async () => {
+  const party = nightParty(-60 * 60000);
+  const t = Date.now();
+  party.night = { oven: {
+    z1: { rack: "top", startedAt: t - 30 * 60000, minutes: 8, readyAt: t - 20 * 60000 },
+    z2: { rack: "bottom", startedAt: t - 60000, minutes: 8 },
+  } };
+  await open(party, "matt", "Matt");
+  const db = () => js(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"]`);
+  assert.equal(await js(`document.querySelectorAll('#night-ratings [data-rate^="z1:"]').length`), 5, "five stars on the ready pizza");
+  assert.equal(await js(`!!document.querySelector('#night-ratings [data-rate^="z2:"]')`), false, "nothing to rate until it's out");
+  await click(`#night-ratings [data-rate="z1:4"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].ratings?.z1?.matt === 4`, "rated 4");
+  await click(`#night-ratings [data-rate="z1:5"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].ratings?.z1?.matt === 5`, "changed to 5");
+  await click(`#night-ratings [data-spicy="z1"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].adventurous?.matt === "z1"`, "picked 🌶️");
+
+  await open(null, "brad", "Brad");
+  await click(`#night-ratings [data-rate="z1:4"]`);
+  await click(`#night-ratings [data-spicy="z1"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].adventurous?.brad === "z1"`, "brad's pick");
+  await until(`document.querySelector("#night-ratings .awards")?.textContent.includes("Crowd favorite")`, "the awards");
+  assert.match(await text("#night-ratings .awards"), /🏆 Crowd favorite.*Basil Instinct.*🌶️ Most adventurous.*Basil Instinct/);
+
+  // The morning after: a keepsake with the awards, still open for ratings
+  const after = await db();
+  after.meta.endsAt = Date.now() - 60 * 60000;
+  after.night.oven.z2.startedAt = Date.now() - 18 * 60000;
+  after.night.oven.z2.readyAt = Date.now() - 10 * 60000; // came out after z1
+  await open(after, "damian", "Damian");
+  assert.equal(await visible("#night-section"), false, "no party mode once it's over");
+  assert.equal(await visible("#keepsake"), true);
+  assert.match(await text("#keepsake .awards"), /Crowd favorite.*Basil Instinct/);
+  assert.deepEqual(await js(`[...document.querySelectorAll("#keepsake [data-made]")].map((li) => li.dataset.made)`), ["z1", "z2"], "in the order they came out");
+  assert.match(await text(`#keepsake [data-made="z1"]`), /★ 4\.5 \(2\)/);
+  await click(`#keepsake [data-rate="z1:3"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].ratings?.z1?.damian === 3`, "a rating the morning after");
+
+  const late = await db();
+  late.meta.endsAt = Date.now() - 25 * 60 * 60000;
+  await open(late, "damian", "Damian");
+  assert.equal(await visible("#keepsake"), true);
+  assert.equal(await js(`!!document.querySelector("#keepsake [data-rate]")`), false, "ratings closed after a day");
+});
