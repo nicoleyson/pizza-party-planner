@@ -1,4 +1,6 @@
-# Publishes the site to GitHub Pages on every push to main.
+# Runs every test, then publishes the site to GitHub Pages, on every push to main.
+# If any test fails, nothing is published and the live site stays as it was.
+# Pushes to claude/ working branches run the tests only, so they can be checked before main.
 # config.js isn't in the repo: it's built here from four repo secrets
 # (Settings → Secrets and variables → Actions → New repository secret):
 #   FIREBASE_API_KEY, FIREBASE_APP_ID, FIREBASE_PROJECT_ID, FIREBASE_DATABASE_URL
@@ -6,7 +8,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, "claude/**"]
   workflow_dispatch:
 
 permissions:
@@ -14,12 +16,13 @@ permissions:
   pages: write
   id-token: write
 
+# A newer push replaces an older run, but a branch's tests never cancel a deploy from main
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -28,8 +31,27 @@ jobs:
         with:
           node-version: 22
 
-      - name: Run tests
+      # The database rules emulator runs on Java
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Unit tests
         run: npm test
+
+      - name: Database rules (Firebase emulator, never the live database)
+        run: npm run test:rules
+
+      - name: The page in a hidden Chrome (demo mode)
+        run: npm run test:e2e
+
+  build:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
 
       - name: Write config.js from secrets
         env:

@@ -107,7 +107,7 @@ It opens the site in a hidden Chrome window in demo mode, so it never signs in o
 3. Repo → **Settings → Pages** → Source: **GitHub Actions**.
 4. Firebase → **Authentication → Settings → Authorized domains** → add `<your-username>.github.io`, or Google sign-in won't work on the live site.
 
-Every push to `main` runs the tests, builds `config.js` from the secrets, and publishes the site ([`.github/workflows/pages.yml`](.github/workflows/pages.yml)) at `https://<your-username>.github.io/<repo-name>/`.
+Every push to `main` runs all three kinds of tests (unit, database rules and the page in Chrome), builds `config.js` from the secrets, and publishes the site. If any test fails, nothing is published. Pushes to `claude/` branches run just the tests ([`.github/workflows/pages.yml`](.github/workflows/pages.yml)) at `https://<your-username>.github.io/<repo-name>/`.
 
 > The Firebase web config isn't truly secret: the live site has to send it to every visitor's browser so it can talk to Firebase. Keeping it out of the repo stops it showing up in code search and secret scanners, and lets anyone reuse this repo with their own project. What actually protects your data is the database rules.
 

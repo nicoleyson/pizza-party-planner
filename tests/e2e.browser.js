@@ -21,6 +21,8 @@ const CHROME = process.env.CHROME || [
   "/usr/bin/chromium",
 ].find((p) => existsSync(p));
 const skip = !CHROME && "no Chrome found (set CHROME=/path/to/chrome)";
+// On GitHub a skipped run would look like a pass, so a missing Chrome fails it instead
+if (skip && process.env.CI) throw new Error(skip);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ── A tiny web server for the site's files ──
@@ -44,7 +46,8 @@ const pending = new Map();
 let errors = [];
 async function launch() {
   profile = mkdtempSync(join(tmpdir(), "pizza-e2e-"));
-  chrome = spawn(CHROME, ["--headless=new", "--remote-debugging-port=0", `--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check", "about:blank"], { stdio: ["ignore", "ignore", "pipe"] });
+  // GitHub's Ubuntu machines don't allow Chrome's sandbox; it only ever opens this local test site there
+  chrome = spawn(CHROME, ["--headless=new", ...(process.env.CI ? ["--no-sandbox"] : []), "--remote-debugging-port=0", `--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check", "about:blank"], { stdio: ["ignore", "ignore", "pipe"] });
   const wsBrowser = await new Promise((resolve, reject) => {
     let log = "";
     chrome.stderr.on("data", (d) => { log += d; const m = log.match(/ws:\/\/[^\s]+/); if (m) resolve(m[0]); });
@@ -62,6 +65,9 @@ async function launch() {
   });
   await send("Runtime.enable");
   await send("Page.enable");
+  // The page's web fonts come from Google; waiting on them made page loads slow and flaky. Tests use the fallback fonts.
+  await send("Network.enable");
+  await send("Network.setBlockedURLs", { urls: ["*fonts.googleapis.com*", "*fonts.gstatic.com*"] });
   await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
 }
 const send = (method, params = {}) => new Promise((r) => { const n = ++nextId; pending.set(n, r); ws.send(JSON.stringify({ id: n, method, params })); });
