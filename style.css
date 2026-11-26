@@ -40,7 +40,7 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { margin: 0; padding-bottom: 24px; }
+body { margin: 0; padding-bottom: 48px; }
 :focus-visible { outline: 3px solid var(--basil); outline-offset: 2px; }
 h1, h2, h3 { margin: 0; font-weight: 700; }
 p { margin: 0; }
@@ -494,7 +494,6 @@ ul.list li.editing { display: block; padding: 8px 0; }
   transition: transform .3s cubic-bezier(.3, 1.4, .6, 1); pointer-events: none;
 }
 #toast.show { transform: translateX(-50%) translateY(0); }
-.foot { width: max-content; max-width: calc(100% - 32px); margin: 34px auto 0; padding: 3px 12px; background: var(--paper); color: var(--muted); border-radius: 999px; font-size: .85rem; text-align: center; }
 
 /* Label bubbles for icon buttons: screen readers get aria-label, mouse and keyboard users get this */
 @media (hover: hover) {

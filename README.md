@@ -166,7 +166,7 @@ Worth checking in Firebase and Google Cloud:
 | `lib.js` | Small helpers: party codes, escaping, grouping ingredients, ranking pizzas |
 | `night.js` | Party mode: the host preview, game plan, pizza count, extra pizzas, prep list by day with notes, tasks and tags, oven timers, ratings and awards |
 | `pie.js` | The pizza drawings: sauce colors, cheese, topping dots and icons |
-| `style.css` | The look: a checkered tablecloth with paper order tickets on it, and a walnut table in dark mode (follows your device setting) |
+| `style.css` | The look: a checkered tablecloth with paper order tickets on it, and a walnut table in dark mode |
 | `theme.js` | The Light / Dark switch. Loads first so the page never flashes the wrong theme |
 | `morph.js` | Updates lists in place when friends change things, so the page doesn't jump or lose what you're typing |
 | `config.example.js` | Template for your `config.js` (Firebase settings) |
