@@ -594,7 +594,8 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .prep-note { margin: 4px 0 0; font-size: .9rem; }
 .note-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .note-form input { flex: 1; min-width: 160px; }
-.prep-cat h4 { margin: 12px 0 6px; font-size: .9rem; display: flex; align-items: center; gap: 6px; }
+.prep-cat h4 { margin: 12px 0 6px; font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.prep-cat:first-of-type h4 { margin-top: 4px; }
 .prep-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .prep-list label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
 .prep-list label input { width: 20px; height: 20px; min-height: 0; margin-top: 2px; flex: none; }
@@ -604,8 +605,11 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .prep-list > li > .note-form input { min-width: 120px; }
 .prep-tools { display: inline-flex; align-items: center; gap: 2px; margin-top: -4px; }
 .prep-tools select { width: auto; min-height: 0; padding: 4px 24px 4px 8px; background-position: right 7px center; font-size: .85rem; word-spacing: normal; border-radius: 8px; }
-.prep-day + .prep-day { margin-top: 14px; padding-top: 12px; border-top: 2px dashed var(--paper-edge); }
-.prep-day-head { margin: 0 0 2px; font-size: 1rem; }
+.prep-day { border: 2px solid var(--paper-edge); border-radius: 14px; padding: 0 12px 12px; background: var(--paper); }
+.prep-day + .prep-day { margin-top: 14px; }
+.prep-day > .prep-day-head { margin: 0 -12px 8px; padding: 9px 12px; font-size: 1rem; background: var(--field); border-bottom: 2px solid var(--paper-edge); border-radius: 12px 12px 0 0; }
+.prep-day[data-prep-days="0"] { border-color: var(--crust); }
+.prep-day[data-prep-days="0"] > .prep-day-head { background: var(--gap); border-bottom-color: var(--crust); }
 .prep-tags { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 6px; vertical-align: middle; }
 .tag { font-size: .75rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--field); border: 1.5px solid var(--paper-edge); white-space: nowrap; }
 .tag-chip { min-height: 34px; padding: 4px 12px; border-radius: 999px; font-size: .85rem; background: var(--paper); color: var(--ink); border: 2px solid var(--paper-edge); box-shadow: none; }
