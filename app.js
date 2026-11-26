@@ -170,7 +170,7 @@ function showGate() {
         notHost();
         return toast("🔒 You're not authorized to host parties.");
       }
-      return toast("That didn't save. Check your connection and try again.");
+      return toast("Hmm, that didn't save 😕 Check your connection and try again.");
     }
     location.hash = c;
   });
@@ -184,7 +184,7 @@ function startParty(code) {
   const saved = (promise) =>
     Promise.resolve(promise).catch((err) => {
       console.error(err);
-      toast("That didn't save. Check your connection and try again.");
+      toast("Hmm, that didn't save 😕 Check your connection and try again.");
       throw err;
     });
   // Once the party's over it's a keepsake: only the host's settings (name, date, guest list, cohosts) can change.
@@ -589,7 +589,7 @@ function startParty(code) {
     const lines = myItems().map(([id, it]) => `${got.has(id) ? "✓" : "☐"} ${it.name.trim()}${it.amount ? ` (${it.amount.trim()})` : ""}`);
     const text = `🛒 ${state.meta.title || "Pizza party"}\n${lines.join("\n")}`;
     try { await navigator.clipboard.writeText(text); toast("List copied! 📋"); }
-    catch { toast("Couldn't copy the list"); }
+    catch { toast("Couldn't copy, sorry 😕"); }
   });
   function renderPeople() {
     const list = Object.entries(state.people).sort((a, b) => (a[1].joinedAt || 0) - (b[1].joinedAt || 0));
@@ -818,7 +818,7 @@ function startParty(code) {
     $("item-name").value = "";
     $("item-amount").value = "";
     setPick($("item-icon"), "");
-    toast(`${name} added`);
+    toast(`Yay, thanks ${by}! ${name} added 💛`);
   });
 
   $("diet-form").addEventListener("submit", async (e) => {
@@ -828,7 +828,7 @@ function startParty(code) {
     if (!by || !note) return;
     await store.add("diets", { note, by, uid, createdAt: Date.now() });
     $("diet-note").value = "";
-    toast("Added to dietary needs");
+    toast("Noted! We'll keep it in mind 💚");
   });
 
   $("pizza-form").addEventListener("submit", async (e) => {
@@ -915,7 +915,7 @@ function startParty(code) {
       }
     }
     showMetaForm(false);
-    toast(wasOver && !isOver({ endsAt: partyEndsAt(date) }) ? "The party's back on! 🎉" : "Party updated");
+    toast(wasOver && !isOver({ endsAt: partyEndsAt(date) }) ? "The party's back on! 🎉" : "Party updated ✨");
   });
 
   document.addEventListener("submit", async (e) => {
@@ -934,7 +934,7 @@ function startParty(code) {
     const aka = nextAka(it, name);
     editingItem = null;
     await store.set(`items/${id}`, { name, category, by: it.by, uid: it.uid, createdAt: it.createdAt || Date.now(), ...(amount && { amount }), ...(icon && { icon }), ...(aka.length && { aka }) });
-    toast(`${name} updated`);
+    toast(`${name} updated ✨`);
   });
 
   // Redraw the pie as you tick toppings or tap a sauce color in the pizza editor
@@ -965,9 +965,9 @@ function startParty(code) {
     editingPizza = null;
     try {
       for (const [path, val] of writes) await store.set(path, val);
-      if (writes.length) toast(`${name} updated`);
+      if (writes.length) toast(`${name} updated 🍕`);
     } catch {
-      toast("Couldn't save all of that. Try again.");
+      toast("Couldn't save all of that, sorry 😕");
     }
     renderPizzas();
   });
@@ -994,7 +994,7 @@ function startParty(code) {
       if (!src || !by) return;
       const icon = safeIcon(src.icon);
       const ref = await store.add("items", { name: src.name.trim().slice(0, 60), category: src.category, by, uid, createdAt: Date.now(), ...(icon && { icon }) });
-      toast(`You're bringing ${src.name.trim()} too! Add how much if you like.`);
+      toast(`You're bringing ${src.name.trim()} too! Add how much if you like ✨`);
       if (ref?.key) {
         editingItem = ref.key;
         renderItems();
