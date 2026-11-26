@@ -65,9 +65,6 @@ async function launch() {
   });
   await send("Runtime.enable");
   await send("Page.enable");
-  // The page's web fonts come from Google; waiting on them made page loads slow and flaky. Tests use the fallback fonts.
-  await send("Network.enable");
-  await send("Network.setBlockedURLs", { urls: ["*fonts.googleapis.com*", "*fonts.gstatic.com*"] });
   await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
 }
 const send = (method, params = {}) => new Promise((r) => { const n = ++nextId; pending.set(n, r); ws.send(JSON.stringify({ id: n, method, params })); });
@@ -104,7 +101,8 @@ let visit = 0;
 async function open(party, as, name = as) {
   if (party) {
     await send("Page.navigate", { url: `${base}/?demo` });
-    await until(`document.readyState === "complete"`);
+    // The page's fonts come from Google, which is sometimes slow, so the first load gets longer
+    await until(`document.readyState === "complete"`, "the page to load", 15000);
     await js(`localStorage.clear(); localStorage.uid = ${JSON.stringify(as)}; localStorage.myName = ${JSON.stringify(name)};
       localStorage["pizza-demo"] = ${JSON.stringify(JSON.stringify({ parties: { [CODE]: party } }))}; true`);
   } else {
@@ -731,7 +729,8 @@ const setWidth = (width) => send("Emulation.setDeviceMetricsOverride", { width, 
 
 check("nothing sticks out sideways on a phone, on any screen", async () => {
   // Anything wider than the screen, or poking out past its edge, gets named
-  const sticksOut = () => js(`(() => { const W = document.documentElement.clientWidth, out = [];
+  // Measured with the real fonts, like people see it
+  const sticksOut = () => js(`document.fonts.ready.then(() => { const W = document.documentElement.clientWidth, out = [];
     if (document.documentElement.scrollWidth > W + 1) out.push("the page scrolls sideways (" + document.documentElement.scrollWidth + "px)");
     // Name the innermost culprits, not every box that holds them
     const bad = [...document.querySelectorAll("body *")].filter((el) => {
@@ -743,7 +742,7 @@ check("nothing sticks out sideways on a phone, on any screen", async () => {
       const r = el.getBoundingClientRect();
       out.push((el.id ? "#" + el.id : el.tagName.toLowerCase() + [...el.classList].map((c) => "." + c).join("")) + " in " + (el.closest("[id]")?.id || "?") + " " + Math.round(r.left) + "→" + Math.round(r.right));
     }
-    return out.slice(0, 8); })()`);
+    return out.slice(0, 8); })`);
   const screens = [
     ["planning, with my list and an ingredient being edited", async () => {
       await open(basicParty(), "nicole", "Nicole");
