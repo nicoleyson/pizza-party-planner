@@ -583,6 +583,7 @@ check("party mode: hosts plan prep by day, add tasks like the dough, and tick th
   const groups = () => js(`[...document.querySelectorAll("#night-prep [data-prep-days]")].map((g) => g.dataset.prepDays + ":" + [...g.querySelectorAll("li b")].map((b) => b.textContent).join(","))`);
   await open(nightParty(60 * 60000), "nicole", "Nicole");
   await click("#preview-night");
+  assert.equal(await js(`getComputedStyle(document.querySelector("#night-prep [data-task-form] select")).wordSpacing`), "0px", "the task's day picker reads normally, without wide gaps");
   // Everything starts on the day
   assert.deepEqual((await groups()).map((g) => g.split(":")[0]), ["0"]);
   assert.match(await text(`#night-prep [data-prep-days="0"] .prep-day-head`), /day of/);
