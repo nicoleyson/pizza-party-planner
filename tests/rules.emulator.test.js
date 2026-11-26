@@ -13,8 +13,9 @@ import { readFileSync } from "node:fs";
 const HOST = process.env.FIREBASE_DATABASE_EMULATOR_HOST;
 const NS = "pizza-rules-test";
 const skip = !HOST && "set FIREBASE_DATABASE_EMULATOR_HOST (npm run test:rules does this)";
-// On GitHub a skipped run would look like a pass, so a missing emulator fails it instead
-if (skip && process.env.CI) throw new Error(skip);
+// npm test picks this file up too and skips it. When the emulator is meant to be running
+// (GitHub sets REQUIRE_EMULATOR), a skipped run would look like a pass, so it fails instead.
+if (skip && process.env.REQUIRE_EMULATOR) throw new Error(skip);
 
 // ── Talking to the emulator ──
 const url = (path) => `http://${HOST}/${path}.json?ns=${NS}`;

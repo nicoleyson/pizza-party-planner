@@ -42,6 +42,8 @@ jobs:
 
       - name: Database rules (Firebase emulator, never the live database)
         run: npm run test:rules
+        env:
+          REQUIRE_EMULATOR: "1"
 
       - name: The page in a hidden Chrome (demo mode)
         run: npm run test:e2e
