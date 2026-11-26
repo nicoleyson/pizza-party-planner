@@ -713,3 +713,262 @@ check("party mode: hosts tag prep items, and everyone filters the prep list by t
   await click(`#night-prep [data-filter="shred"]`);
   assert.deepEqual(await rowsShown(), ["mozzarella"]);
 });
+
+// ── Extra coverage ──
+const watchToasts = () => js(`window.__toasts = []; new MutationObserver(() => window.__toasts.push(document.getElementById("toast").textContent))
+  .observe(document.getElementById("toast"), { childList: true, characterData: true, subtree: true }); true`);
+const db = () => js(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"]`);
+// Saves a change the way another phone would, then tells this page, like a real update from a friend
+const fromAnotherPhone = (fn) => js(`(() => { const d = JSON.parse(localStorage["pizza-demo"]); (${fn})(d.parties["${CODE}"]);
+  localStorage["pizza-demo"] = JSON.stringify(d); dispatchEvent(new StorageEvent("storage", { key: "pizza-demo" })); return true; })()`);
+const setWidth = (width) => send("Emulation.setDeviceMetricsOverride", { width, height: 844, deviceScaleFactor: 1, mobile: true });
+
+check("nothing sticks out sideways on a phone, on any screen", async () => {
+  // Anything wider than the screen, or poking out past its edge, gets named
+  const sticksOut = () => js(`(() => { const W = document.documentElement.clientWidth, out = [];
+    if (document.documentElement.scrollWidth > W + 1) out.push("the page scrolls sideways (" + document.documentElement.scrollWidth + "px)");
+    // Name the innermost culprits, not every box that holds them
+    const bad = [...document.querySelectorAll("body *")].filter((el) => {
+      if (!el.getClientRects().length || el.closest("[hidden]")) return false;
+      const r = el.getBoundingClientRect();
+      return r.width && (r.right > W + 1 || r.left < -1);
+    });
+    for (const el of bad.filter((el) => !bad.some((o) => o !== el && el.contains(o)))) {
+      const r = el.getBoundingClientRect();
+      out.push((el.id ? "#" + el.id : el.tagName.toLowerCase() + [...el.classList].map((c) => "." + c).join("")) + " in " + (el.closest("[id]")?.id || "?") + " " + Math.round(r.left) + "→" + Math.round(r.right));
+    }
+    return out.slice(0, 8); })()`);
+  const screens = [
+    ["planning, with my list and an ingredient being edited", async () => {
+      await open(basicParty(), "nicole", "Nicole");
+      await click("#list-btn");
+      await click(`#items [data-edit-item="i4"]`);
+    }],
+    ["the host's party mode preview, with tags and a prep note open", async () => {
+      await open(nightParty(60 * 60000), "nicole", "Nicole");
+      await click("#preview-night");
+      await click(`#night-prep [data-edit-tags="mushrooms"]`);
+      await click(`#night-prep [data-edit-ing="mozzarella"]`);
+    }],
+    ["a guest during party mode, with a pizza in the oven", async () => {
+      const party = nightParty(-60000);
+      party.night = { oven: { z1: { rack: "top", startedAt: Date.now(), minutes: 8 } } };
+      await open(party, "matt", "Matt");
+    }],
+    ["the keepsake", async () => {
+      const party = nightParty(-60 * 60000);
+      party.meta.endsAt = Date.now() - 60000;
+      party.night = { oven: { z1: { rack: "top", startedAt: Date.now() - 20 * 60000, minutes: 8, readyAt: Date.now() - 10 * 60000 } } };
+      party.ratings = { z1: { matt: 5 } };
+      await open(party, "matt", "Matt");
+    }],
+  ];
+  try {
+    for (const width of [390, 320]) {
+      await setWidth(width);
+      for (const [name, show] of screens) {
+        await show();
+        await sleep(150);
+        assert.deepEqual(await sticksOut(), [], `${name}, ${width}px wide`);
+      }
+    }
+  } finally {
+    await setWidth(390);
+  }
+});
+
+check("anything people type shows up as plain text everywhere, never as page code", async () => {
+  const BAD = `<img src=x onerror="window.__xss=1">`;
+  const party = nightParty(-60 * 60000);
+  party.meta = { ...party.meta, title: "Party " + BAD, details: "At " + BAD, pizzaGoal: 4 };
+  party.people.zed = { name: BAD, joinedAt: 5 };
+  party.items.i5 = item(BAD, "topping", "Nicole", "nicole", { amount: BAD });
+  party.pizzas.z4 = { name: BAD, by: BAD, uid: "zed", createdAt: 4, picks: [BAD, "Mozzarella"], votes: { zed: BAD } };
+  party.diets = { d1: { note: BAD, by: BAD, uid: "zed", createdAt: 1 } };
+  party.night = {
+    plan: "Plan " + BAD,
+    notes: { z4: BAD },
+    tasks: { t1: { text: BAD, days: 0, createdAt: 1 } },
+    ingNotes: { mozzarella: BAD },
+    oven: { z4: { rack: "top", startedAt: Date.now() - 20 * 60000, minutes: 8, readyAt: Date.now() - 10 * 60000 } },
+  };
+  party.ratings = { z4: { matt: 5 } };
+  party.adventurous = { matt: "z4" };
+  const noCode = async (where) => {
+    assert.equal(await js(`document.querySelectorAll('img[src="x"], [onerror]').length`), 0, `${where}: typed text turned into page code`);
+    assert.equal(await js(`window.__xss`), undefined, where);
+  };
+  await open(party, "nicole", "Nicole");
+  await click("#planning-toggle");
+  await click("#list-btn");
+  await noCode("party mode and planning");
+  const page = await js(`document.body.textContent`);
+  for (const spot of ["Party " + BAD, "At " + BAD, "Plan " + BAD]) assert.ok(page.includes(spot), `shows ${spot} as typed`);
+  assert.ok(await js(`document.querySelector("#night-prep").textContent.includes(${JSON.stringify(BAD)})`), "the task and prep note show as typed");
+  assert.ok(await js(`document.querySelector("#grocery").textContent.includes(${JSON.stringify(BAD)})`), "my list shows it as typed");
+  assert.ok(await js(`document.querySelector("#diets").textContent.includes(${JSON.stringify(BAD)})`), "dietary needs show it as typed");
+
+  const after = await db();
+  after.meta.endsAt = Date.now() - 60000;
+  await open(after, "nicole", "Nicole");
+  await noCode("the keepsake");
+  assert.ok(await js(`document.querySelector("#keepsake").textContent.includes(${JSON.stringify(BAD)})`), "the keepsake shows it as typed");
+});
+
+check("🛒 my list: just your things, ticks stay after a reload, and it copies", async () => {
+  await open(basicParty(), "zoe", "Zoe");
+  assert.equal(await visible("#list-btn"), false, "no list when you're not bringing anything");
+
+  await open(basicParty(), "nicole", "Nicole");
+  await fill("#item-name", "Pepperoni");
+  await fill("#item-cat", "topping");
+  await fill("#item-amount", "2 packs");
+  await submit("#item-form");
+  await until(`document.getElementById("list-btn").textContent.includes("2")`, "two things on my list");
+  await click("#list-btn");
+  const names = await js(`[...document.querySelectorAll("#grocery .g-name")].map((n) => n.textContent)`);
+  assert.deepEqual(names, ["Fresh basil", "Pepperoni"], "only my things, not Damian's sauce or Matt's cheese");
+  assert.equal(await text(`#grocery li:nth-child(2) .amt`), "2 packs");
+
+  await click(`#grocery [data-got="i4"]`);
+  await until(`document.getElementById("list-btn").textContent.includes("1")`, "one left");
+  await open(null, "nicole", "Nicole");
+  await click("#list-btn");
+  assert.equal(await js(`document.querySelector('#grocery [data-got="i4"]').checked`), true, "the tick is still there after a reload");
+  assert.equal((await db()).items.i4.got, undefined, "ticks only live in this browser, not the party");
+
+  const pep = await js(`Object.entries(JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].items).find(([, i]) => i.name === "Pepperoni")[0]`);
+  await click(`#grocery [data-got="${pep}"]`);
+  await until(`document.getElementById("list-btn").textContent.includes("All set")`, "all set");
+
+  await js(`Object.defineProperty(navigator.clipboard, "writeText", { value: async (t) => { window.__copied = t; } }); true`);
+  await click("#grocery-copy");
+  await until(`window.__copied`, "the list copied");
+  assert.equal(await js(`window.__copied`), "🛒 Test Pizza Night\n✓ Fresh basil\n✓ Pepperoni (2 packs)");
+
+  await open(null, "matt", "Matt");
+  await click("#list-btn");
+  assert.deepEqual(await js(`[...document.querySelectorAll("#grocery .g-name")].map((n) => n.textContent)`), ["Mozzarella"], "Matt sees only his");
+  assert.equal(await js(`document.querySelector('#grocery input').checked`), false, "and not Nicole's ticks");
+});
+
+check("dietary needs: add one, see it, and only its writer deletes it", async () => {
+  await open(basicParty(), "matt", "Matt");
+  assert.match(await text("#diets"), /Nothing specified yet/);
+  await fill("#diet-note", "Nut allergy");
+  await submit("#diet-form");
+  await until(`Object.values(JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].diets || {}).length === 1`, "the note saved");
+  const [id, note] = Object.entries((await db()).diets)[0];
+  assert.deepEqual([note.note, note.by, note.uid], ["Nut allergy", "Matt", "matt"]);
+  await until(`document.getElementById("diets").textContent.includes("Nut allergy")`, "the note on the list");
+  assert.match(await text("#diets"), /Matt.*Nut allergy/);
+  assert.equal(await js(`document.getElementById("diet-note").value`), "", "the box clears");
+
+  await open(null, "nicole", "Nicole");
+  assert.equal(await js(`!!document.querySelector('#diets [data-del]')`), false, "others can't delete it");
+
+  await open(null, "matt", "Matt");
+  await click(`#diets [data-del="diet:${id}"]`);
+  assert.match(await text("#diets"), /tap again to delete/, "one tap only asks");
+  assert.equal(Object.keys((await db()).diets || {}).length, 1);
+  await click(`#diets [data-del="diet:${id}"]`);
+  await until(`!Object.keys(JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].diets || {}).length`, "deleted");
+  await until(`document.getElementById("diets").textContent.includes("Nothing specified yet")`, "back to empty");
+
+  const over = await db();
+  over.meta.endsAt = Date.now() - 60000;
+  await open(over, "matt", "Matt");
+  assert.match(await text("#diets"), /No dietary needs were noted/);
+});
+
+check("🔒 invite-only: the host checks the emails and gets a heads-up before locking anyone out", async () => {
+  await open(basicParty(), "matt", "Matt");
+  assert.equal(await visible("#guest-btn"), false, "guests don't get the guest list");
+
+  await open(null, "nicole", "Nicole");
+  await watchToasts();
+  await click("#guest-btn");
+  assert.equal(await visible("#guest-panel"), true);
+  await fill("#guest-emails", "matt at gmail");
+  await click("#guest-save");
+  await until(`window.__toasts.some((t) => t.includes("doesn't look like an email"))`, "a bad email caught");
+  await fill("#guest-emails", "");
+  await js(`document.getElementById("guest-only").checked = true; document.getElementById("guest-only").dispatchEvent(new Event("change")); true`);
+  await click("#guest-save");
+  await until(`window.__toasts.some((t) => t.includes("Add at least one guest email"))`, "an empty list caught");
+
+  await fill("#guest-emails", "Damian@Gmail.com\nmatt.lee@gmail.com");
+  await click("#guest-save");
+  assert.equal(await visible("#guest-warn"), true, "a heads-up first");
+  assert.match(await text("#guest-warn"), /3 people have already joined \(Damian, Matt, Brad\)/);
+  assert.equal(await text("#guest-save"), "Yes, make it invite-only");
+  assert.equal((await db()).meta.guestOnly, undefined, "nothing saved yet");
+
+  await click("#guest-save");
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].meta.guestOnly === true`, "invite-only on");
+  assert.deepEqual((await db()).guests, { "damian@gmail,com": "damian@gmail.com", "matt,lee@gmail,com": "matt.lee@gmail.com" }, "emails saved lowercase, the way sign-in checks them");
+  await until(`!document.getElementById("invite-only").hidden`, "the 🔒 Invite-only note");
+  assert.equal(await visible("#guest-panel"), false);
+
+  // Turning it off doesn't need the heads-up
+  await click("#guest-btn");
+  await js(`document.getElementById("guest-only").checked = false; document.getElementById("guest-only").dispatchEvent(new Event("change")); true`);
+  await click("#guest-save");
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].meta.guestOnly === undefined`, "invite-only off");
+  assert.equal(await visible("#guest-warn"), false);
+});
+
+check("the tag filter goes back to All when its last item loses that tag", async () => {
+  await open(nightParty(60 * 60000), "nicole", "Nicole");
+  await click("#preview-night");
+  const all = await js(`document.querySelectorAll("#night-prep li[data-prep-row]").length`);
+  await click(`#night-prep [data-edit-tags="mushrooms"]`);
+  await click(`#night-prep [data-tag="mushrooms:cut"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.prepTags?.mushrooms?.cut`, "cut saved");
+  await click(`#night-prep [data-close-tags]`);
+  await click(`#night-prep [data-filter="cut"]`);
+  assert.equal(await js(`document.querySelectorAll("#night-prep li[data-prep-row]").length`), 1);
+
+  await click(`#night-prep [data-edit-tags="mushrooms"]`);
+  await click(`#night-prep [data-tag="mushrooms:cut"]`);
+  await until(`!JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.prepTags?.mushrooms?.cut`, "cut removed");
+  assert.equal(await js(`!!document.querySelector("#night-prep [data-filter]")`), false, "no filters left");
+  assert.equal(await js(`document.querySelectorAll("#night-prep li[data-prep-row]").length`), all, "everything shows again");
+
+  // ...and tagging something later starts on All, not the old filter
+  await click(`#night-prep [data-tag="mushrooms:cook"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.prepTags?.mushrooms?.cook`, "cook saved");
+  assert.equal(await js(`document.querySelector('#night-prep [data-filter="all"]').getAttribute("aria-pressed")`), "true");
+  assert.equal(await js(`document.querySelectorAll("#night-prep li[data-prep-row]").length`), all);
+});
+
+check("a busy oven rack can't take a second pizza, even if its button gets pressed", async () => {
+  await open(nightParty(-60000), "matt", "Matt");
+  await watchToasts();
+  await click(`#night-oven [data-rack="z1:top"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.oven?.z1?.rack === "top"`, "z1 on top");
+  // Like a tap that lands just before the screen catches up
+  await js(`const b = document.querySelector('#night-oven [data-rack="z2:top"]'); b.disabled = false; b.click(); true`);
+  await until(`window.__toasts.some((t) => t.includes("The top rack is busy"))`, "the busy message");
+  assert.equal((await db()).night.oven.z2, undefined, "z2 stays out");
+  assert.equal((await db()).night.oven.z1.rack, "top", "z1 untouched");
+});
+
+check("when a friend changes something, what you're typing stays put", async () => {
+  await open(basicParty(), "nicole", "Nicole");
+  await fill("#item-name", "Garl");
+  await fill("#pizza-name", "Half a ");
+  await js(`[...document.querySelectorAll("#builder label.chip")].find((l) => l.textContent.includes("Mushrooms")).click(); true`);
+  await js(`document.getElementById("pizza-name").focus(); document.getElementById("pizza-name").setSelectionRange(7, 7); true`);
+
+  await fromAnotherPhone(`(p) => { p.items.i9 = { name: "Pineapple", category: "topping", by: "Brad", uid: "brad", createdAt: 9 };
+    p.pizzas = { z1: { name: "Brad's Special", by: "Brad", uid: "brad", createdAt: 1, picks: ["Mushrooms"], votes: { brad: "Brad" } } }; }`);
+  await until(`document.getElementById("items").textContent.includes("Pineapple")`, "Brad's pineapple shows up");
+  await until(`document.getElementById("pizzas").textContent.includes("Brad's Special")`, "Brad's pizza shows up");
+  assert.ok(await js(`[...document.querySelectorAll("#builder label.chip")].some((l) => l.textContent.includes("Pineapple"))`), "and you can pick it");
+  assert.equal(await js(`document.getElementById("item-name").value`), "Garl");
+  assert.equal(await js(`document.getElementById("pizza-name").value`), "Half a ");
+  assert.equal(await js(`document.activeElement.id`), "pizza-name", "still typing in the same box");
+  assert.equal(await js(`document.getElementById("pizza-name").selectionStart`), 7, "with the cursor where it was");
+  assert.ok(await js(`[...document.querySelectorAll("#builder label.chip")].find((l) => l.textContent.includes("Mushrooms")).querySelector("input").checked`), "your ticked topping stays ticked");
+});

@@ -497,14 +497,15 @@ ul.list li.editing { display: block; padding: 8px 0; }
 
 /* Label bubbles for icon buttons: screen readers get aria-label, mouse and keyboard users get this */
 @media (hover: hover) {
-  [data-tip]::after {
+  /* Only drawn while showing: even an invisible bubble at the screen's edge would make the page scroll sideways */
+  [data-tip]:hover::after, [data-tip]:focus-visible::after {
     content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 6px); z-index: 5;
-    transform: translate(-50%, 3px); opacity: 0; pointer-events: none;
+    transform: translate(-50%, 0); pointer-events: none;
     font: 700 .75rem/1 var(--body); white-space: nowrap; text-shadow: none; color: var(--cloth);
     background: var(--ink); border-radius: 999px; padding: 5px 9px;
-    transition: opacity .12s, transform .12s;
+    animation: tip-in .12s;
   }
-  [data-tip]:hover::after, [data-tip]:focus-visible::after { opacity: 1; transform: translate(-50%, 0); }
+  @keyframes tip-in { from { opacity: 0; transform: translate(-50%, 3px); } }
 }
 
 /* Phones: small buttons keep their look but get a finger-sized tap area */
@@ -574,7 +575,7 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .night { display: grid; gap: 34px; }
 .night[hidden], .planning-body[hidden] { display: none; }
 .planning, .planning-body { display: grid; gap: 34px; }
-.planning-toggle { justify-self: center; }
+.planning-toggle { justify-self: center; max-width: 100%; white-space: normal; }
 .night-banner { text-align: center; }
 .night-banner h2 { justify-content: center; }
 .voting-lock { margin: 10px auto 0; display: inline-block; padding: 6px 14px; border-radius: 999px; background: var(--field); border: 2px dashed var(--paper-edge); font-weight: 700; }
