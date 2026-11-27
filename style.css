@@ -14,6 +14,7 @@
   --placeholder: #97806d;
   --red: #d83a2e;
   --red-dark: #b02a20;
+  --red-ink: #c33228; /* the red for words: a shade darker so it reads on the paper */
   --on-red: #fff;
   --basil: #2f7d3b;
   --basil-wash: #e4f1e2;
@@ -56,7 +57,7 @@ p { margin: 0; }
 }
 .board > * { max-width: 100%; }
 h1 {
-  font-family: var(--display); font-weight: 400; color: var(--red); text-shadow: var(--glow);
+  font-family: var(--display); font-weight: 400; color: var(--red-ink); text-shadow: var(--glow);
   font-size: clamp(2.3rem, 9vw, 3.4rem); line-height: 1.02; letter-spacing: -.01em; overflow-wrap: anywhere;
 }
 h1 .icon-btn { vertical-align: middle; font-size: 1.1rem; text-shadow: none; }
@@ -75,7 +76,7 @@ h1 .icon-btn { vertical-align: middle; font-size: 1.1rem; text-shadow: none; }
 button.ghost.edit-party { margin-left: auto; min-height: 38px; padding: 0 14px; border: 2px solid var(--paper-edge); border-radius: 999px; font-size: .9rem; font-weight: 700; color: var(--ink); }
 button.ghost.edit-party:hover { border-color: var(--ink); }
 button.ghost.edit-party .emo { margin-right: 6px; }
-.leave:hover { color: var(--red); }
+.leave:hover { color: var(--red-ink); }
 
 /* Order ticket: torn zigzag top, ruled inside like an order slip. */
 main { display: grid; gap: 34px; margin-top: 38px; }
@@ -113,7 +114,7 @@ section:hover .h-emoji, section:active .h-emoji, .board:hover > .h-emoji, .board
 /* Sticky note: full width like the tickets, a little crooked. Always yellow paper, even after dark. */
 .note {
   --ink: #2a1c13; --muted: #5a4636; --paper: #fffdf7; --field: rgba(255, 255, 255, .6); --paper-edge: rgba(42, 28, 19, .22);
-  --placeholder: #7d6857; --red: #d83a2e; --red-dark: #b02a20; --on-red: #fff;
+  --placeholder: #7d6857; --red: #d83a2e; --red-dark: #b02a20; --red-ink: #c33228; --on-red: #fff;
   --arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.5 6 6l4.5-4.5' fill='none' stroke='%232a1c13' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   width: 100%; margin: 4px 0 12px; padding: 20px 18px 18px;
   background: var(--note); color: var(--ink); transform: rotate(-.6deg); box-shadow: 3px 4px 0 var(--shadow);
@@ -143,10 +144,10 @@ button:active { transform: translateY(1px); }
 button.secondary { background: var(--paper); color: var(--ink); }
 button.secondary:hover { background: var(--field); }
 button.ghost { min-height: 0; padding: 2px 6px; border: 0; border-radius: 8px; background: none; color: var(--muted); font-weight: 700; }
-button.ghost:hover { background: none; color: var(--red); }
+button.ghost:hover { background: none; color: var(--red-ink); }
 button.icon-btn { display: inline-grid; place-items: center; position: relative; }
 button.ghost.danger { padding: 3px 12px; border: 2px solid var(--ink); border-radius: 999px; background: var(--red); color: var(--on-red); font-size: .85rem; white-space: nowrap; }
-button.link { min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; color: var(--red); text-decoration: underline; text-underline-offset: 3px; }
+button.link { min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; color: var(--red-ink); text-decoration: underline; text-underline-offset: 3px; }
 button.link:hover { background: none; color: var(--red-dark); }
 .row { display: flex; gap: 8px; }
 .row.wrap { flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -188,9 +189,9 @@ button.link:hover { background: none; color: var(--red-dark); }
 .account { margin-top: 12px; font-size: .9rem; color: var(--muted); }
 .account button.link { margin-left: 6px; }
 .meta-form { display: grid; gap: 10px; width: 100%; }
-.meta-form #meta-title { font-family: var(--display); font-size: 1.4rem; color: var(--red); }
+.meta-form #meta-title { font-family: var(--display); font-size: 1.4rem; color: var(--red-ink); }
 .party-over { margin-top: 14px; padding: 12px 14px; background: var(--field); border: 2px dashed var(--ink); border-radius: 8px; }
-.party-over b { font-family: var(--display); font-weight: 400; font-size: 1.2rem; color: var(--red); }
+.party-over b { font-family: var(--display); font-weight: 400; font-size: 1.2rem; color: var(--red-ink); }
 .party-over p + p { margin-top: 4px; font-size: .95rem; color: var(--muted); }
 .guest-panel { width: 100%; margin-top: 14px; padding: 14px; background: var(--field); border: 2px dashed var(--paper-edge); border-radius: 8px; display: grid; gap: 12px; }
 .toggle { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
@@ -224,7 +225,7 @@ button.list-btn .emo, #grocery-copy .emo { margin-right: 5px; }
 .slip-head::after { content: ""; order: 1; flex: 1; min-width: 16px; border-bottom: 2px dotted var(--muted); transform: translateY(-4px); }
 .slip-head .n { order: 2; font-variant-numeric: tabular-nums; }
 #items .cat.gap { margin: 0 -18px; padding: 10px 18px 12px; background: var(--gap); border-bottom-color: transparent; }
-.cat.gap .n { color: var(--red); }
+.cat.gap .n { color: var(--red-ink); }
 .cat.gap p { margin: 2px 0 10px; font-size: .95rem; }
 ul.list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; }
 ul.list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 36px; }
@@ -324,7 +325,7 @@ ul.list li.editing { display: block; padding: 8px 0; }
   border: 2.5px solid var(--ink); border-radius: 4px; box-shadow: 5px 6px 0 var(--shadow); transform: rotate(-1deg);
 }
 .table-head::before { content: ""; position: absolute; left: 0; right: 0; top: 14px; border-top: 2px solid var(--paper-edge); }
-.table-head h2 { display: block; font-family: var(--display); font-weight: 400; font-size: clamp(2.1rem, 8vw, 2.6rem); line-height: 1.1; color: var(--red); }
+.table-head h2 { display: block; font-family: var(--display); font-weight: 400; font-size: clamp(2.1rem, 8vw, 2.6rem); line-height: 1.1; color: var(--red-ink); }
 /* The stamp sits on the card's corner, so the title stays centered */
 .table-head .h-emoji { position: absolute; left: 12px; top: -22px; }
 .table-head .vote-hint { margin-top: 4px; font-size: 1rem; color: var(--ink); }
@@ -346,7 +347,7 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .tally-row.cut .tally-name, .tally-row.cut .tally-n { color: var(--muted); }
 .tally-row.cut .tally-name { text-decoration: line-through; text-decoration-thickness: 1.5px; }
 .tally-row.cut .tally-bar span { background: var(--paper-edge); }
-.tally-cut { display: flex; align-items: center; gap: 8px; color: var(--red); font-size: .85rem; font-weight: 700; }
+.tally-cut { display: flex; align-items: center; gap: 8px; color: var(--red-ink); font-size: .85rem; font-weight: 700; }
 .tally-cut::before, .tally-cut::after { content: ""; flex: 1; border-top: 2.5px dashed var(--red); }
 @media (prefers-reduced-motion: reduce) { .tally-bar span { transition: none; } }
 .cut-line span { padding: 4px 12px; background: var(--paper); border-radius: 999px; box-shadow: 2px 3px 0 var(--shadow); text-align: center; }
@@ -369,7 +370,7 @@ ul.list li.editing { display: block; padding: 8px 0; }
 }
 .tag-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .tag-top > :first-child { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; column-gap: 6px; }
-.pizza h3 { font-family: var(--display); font-weight: 400; font-size: 1.2rem; line-height: 1.15; color: var(--red); overflow-wrap: anywhere; }
+.pizza h3 { font-family: var(--display); font-weight: 400; font-size: 1.2rem; line-height: 1.15; color: var(--red-ink); overflow-wrap: anywhere; }
 .pizza.leader h3 { font-size: 1.5rem; }
 .pizza-tools { display: flex; gap: 2px; margin-left: -4px; }
 .pizza-tools .icon-btn { font-size: .95rem; }
@@ -399,7 +400,7 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .pizza-editor { margin-top: 10px; padding: 10px; background: var(--field); border-radius: 8px; display: grid; gap: 12px; }
 .edit-row { display: grid; gap: 6px; }
 .edit-row > b { font-size: .85rem; color: var(--muted); }
-.edit-row input[data-f="name"] { font-family: var(--display); color: var(--red); }
+.edit-row input[data-f="name"] { font-family: var(--display); color: var(--red-ink); }
 .pizza-editor h5 { margin: 4px 0 0; font-size: .85rem; display: flex; align-items: center; gap: 6px; }
 .pizza-editor .chip.gone > span { text-decoration: line-through; color: var(--muted); }
 .pizza-editor .chip.gone input:checked + span { color: var(--paper); }
@@ -538,7 +539,7 @@ ul.list li.editing { display: block; padding: 8px 0; }
 
 /* 🌙 After hours: the tablecloth comes off and the pizzas sit on a walnut table.
    The paper stays warm cream on top, a touch dimmer. theme.js sets data-theme from the
-   device setting or the switch at the top of the page. */
+   switch at the top of the page. */
 :root[data-theme="dark"] {
   color-scheme: dark;
   --cloth: #f2e6cc;
@@ -550,6 +551,7 @@ ul.list li.editing { display: block; padding: 8px 0; }
   --placeholder: #85705e;
   --red: #b8322a;
   --red-dark: #962519;
+  --red-ink: #a82d25;
   --on-red: #fff;
   --basil: #3d6b3a;
   --basil-wash: #dbe6cf;
@@ -631,7 +633,7 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .add-pizza small { color: var(--muted); }
 .prep-n { font-size: .9rem; }
 .prep-who { color: var(--muted); }
-.prep-missing { color: var(--red); font-weight: 700; }
+.prep-missing { color: var(--red-ink); font-weight: 700; }
 .prep-list label.got b { text-decoration: line-through; color: var(--muted); }
 /* Buttons that can't be used yet (the preview, a taken rack) look it */
 .night button:disabled { opacity: .45; cursor: not-allowed; }
@@ -655,6 +657,6 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .rate-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .stars { display: inline-flex; }
 .star { background: none; border: 0; padding: 0 3px; min-height: 36px; font-size: 1.4rem; color: var(--paper-edge); cursor: pointer; box-shadow: none; }
-.star.on { color: var(--red); }
+.star.on { color: var(--red-ink); }
 .spicy { min-height: 36px; padding: 0 10px; }
 .spicy:not(.on) { background: var(--paper); color: var(--ink); border: 2px solid var(--paper-edge); }
