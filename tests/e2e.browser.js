@@ -786,6 +786,33 @@ const fromAnotherPhone = (fn) => js(`(() => { const d = JSON.parse(localStorage[
   localStorage["pizza-demo"] = JSON.stringify(d); dispatchEvent(new StorageEvent("storage", { key: "pizza-demo" })); return true; })()`);
 const setWidth = (width) => send("Emulation.setDeviceMetricsOverride", { width, height: 844, deviceScaleFactor: 1, mobile: true });
 
+// The screens people see most, each opened fresh, for the checks that look over every screen
+const screens = [
+  ["planning, with my list and an ingredient being edited", async () => {
+    await open(basicParty(), "nicole", "Nicole");
+    await click("#list-btn");
+    await click(`#items [data-edit-item="i4"]`);
+  }],
+  ["the host's party mode preview, with tags and a prep note open", async () => {
+    await open(nightParty(60 * 60000), "nicole", "Nicole");
+    await click("#preview-night");
+    await click(`#night-prep [data-edit-tags="mushrooms"]`);
+    await click(`#night-prep [data-edit-ing="mozzarella"]`);
+  }],
+  ["a guest during party mode, with a pizza in the oven", async () => {
+    const party = nightParty(-60000);
+    party.night = { oven: { z1: { rack: "top", startedAt: Date.now(), minutes: 8 } } };
+    await open(party, "matt", "Matt");
+  }],
+  ["the keepsake", async () => {
+    const party = nightParty(-60 * 60000);
+    party.meta.endsAt = Date.now() - 60000;
+    party.night = { oven: { z1: { rack: "top", startedAt: Date.now() - 20 * 60000, minutes: 8, readyAt: Date.now() - 10 * 60000 } } };
+    party.ratings = { z1: { matt: 5 } };
+    await open(party, "matt", "Matt");
+  }],
+];
+
 check("nothing sticks out sideways on a phone, on any screen", async () => {
   // Anything wider than the screen, or poking out past its edge, gets named
   // Measured with the real fonts, like people see it
@@ -802,31 +829,6 @@ check("nothing sticks out sideways on a phone, on any screen", async () => {
       out.push((el.id ? "#" + el.id : el.tagName.toLowerCase() + [...el.classList].map((c) => "." + c).join("")) + " in " + (el.closest("[id]")?.id || "?") + " " + Math.round(r.left) + "→" + Math.round(r.right));
     }
     return out.slice(0, 8); })`);
-  const screens = [
-    ["planning, with my list and an ingredient being edited", async () => {
-      await open(basicParty(), "nicole", "Nicole");
-      await click("#list-btn");
-      await click(`#items [data-edit-item="i4"]`);
-    }],
-    ["the host's party mode preview, with tags and a prep note open", async () => {
-      await open(nightParty(60 * 60000), "nicole", "Nicole");
-      await click("#preview-night");
-      await click(`#night-prep [data-edit-tags="mushrooms"]`);
-      await click(`#night-prep [data-edit-ing="mozzarella"]`);
-    }],
-    ["a guest during party mode, with a pizza in the oven", async () => {
-      const party = nightParty(-60000);
-      party.night = { oven: { z1: { rack: "top", startedAt: Date.now(), minutes: 8 } } };
-      await open(party, "matt", "Matt");
-    }],
-    ["the keepsake", async () => {
-      const party = nightParty(-60 * 60000);
-      party.meta.endsAt = Date.now() - 60000;
-      party.night = { oven: { z1: { rack: "top", startedAt: Date.now() - 20 * 60000, minutes: 8, readyAt: Date.now() - 10 * 60000 } } };
-      party.ratings = { z1: { matt: 5 } };
-      await open(party, "matt", "Matt");
-    }],
-  ];
   try {
     for (const width of [390, 320]) {
       await setWidth(width);
@@ -1035,4 +1037,104 @@ check("when a friend changes something, what you're typing stays put", async () 
   assert.equal(await js(`document.activeElement.id`), "pizza-name", "still typing in the same box");
   assert.equal(await js(`document.getElementById("pizza-name").selectionStart`), 7, "with the cursor where it was");
   assert.ok(await js(`[...document.querySelectorAll("#builder label.chip")].find((l) => l.textContent.includes("Mushrooms")).querySelector("input").checked`), "your ticked topping stays ticked");
+});
+
+check("every button and box has a name a screen reader can say, on every screen", async () => {
+  // Chrome works out the names the way screen readers do: labels, aria-label, title, the text inside
+  const ROLES = new Set(["button", "link", "textbox", "searchbox", "combobox", "listbox", "checkbox", "radio", "switch", "slider", "spinbutton", "menuitem", "tab"]);
+  await send("Accessibility.enable");
+  try {
+    // Plus planning with nothing open, so the ✏️ and ✕ on your own things show
+    const yours = ["planning, with your own ingredient's ✏️ and ✕", () => open(basicParty(), "nicole", "Nicole")];
+    for (const [name, show] of [...screens, yours]) {
+      await show();
+      await sleep(150);
+      const { nodes } = (await send("Accessibility.getFullAXTree")).result;
+      const nameless = [];
+      for (const n of nodes) {
+        if (n.ignored || !ROLES.has(n.role?.value) || n.name?.value?.trim()) continue;
+        const { node } = (await send("DOM.describeNode", { backendNodeId: n.backendDOMNodeId })).result;
+        const attrs = Object.fromEntries((node.attributes || []).reduce((a, v, i, all) => (i % 2 ? a : [...a, [v, all[i + 1]]]), []));
+        nameless.push(`${n.role.value} <${node.localName}${attrs.id ? "#" + attrs.id : ""}${attrs.class ? "." + attrs.class.split(" ").join(".") : ""}> ${Object.keys(attrs).filter((k) => k.startsWith("data-")).join(" ")}`);
+      }
+      assert.deepEqual(nameless, [], `${name}: these have no name`);
+    }
+  } finally {
+    await send("Accessibility.disable");
+  }
+});
+
+check("tabbing through the page, you can always see where you are", async () => {
+  // Presses Tab like a keyboard does and checks the focused thing looks different from before
+  const look = (target) => `(() => { const el = ${target}, s = getComputedStyle(el);
+    const box = [...el.querySelectorAll(":scope > span")].map((x) => { const t = getComputedStyle(x); return t.outlineStyle + t.outlineWidth + t.boxShadow; }).join();
+    return s.outlineStyle + s.outlineWidth + s.outlineColor + s.boxShadow + s.borderColor + s.backgroundColor + s.color + s.textDecorationLine + box; })()`;
+  const where = `(() => { const el = document.activeElement; return el === document.body ? "" : el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + " " + (el.getAttribute("aria-label") || el.textContent || el.name || "").replace(/\\s+/g, " ").trim().slice(0, 30); })()`;
+  const tab = () => send("Input.dispatchKeyEvent", { type: "keyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 })
+    .then(() => send("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 }));
+  for (const [name, show] of screens) {
+    await show();
+    await js(`document.activeElement?.blur(); true`);
+    const unseen = [], seen = new Set();
+    for (let i = 0; i < 400; i++) {
+      await tab();
+      const at = await js(where);
+      if (!at) continue;
+      if (seen.has(at) && seen.size > 3 && at === [...seen][0]) break; // back to the start
+      seen.add(at);
+      const focused = await js(look("document.activeElement"));
+      // The same thing, not focused
+      const plain = await js(`(() => { const target = document.activeElement; target.blur(); const v = ${look("target")}; target.focus({ focusVisible: true }); return v; })()`);
+      if (focused === plain) unseen.push(at);
+    }
+    assert.ok(seen.size > 5, `${name}: Tab reached ${seen.size} things`);
+    assert.deepEqual(unseen, [], `${name}: tabbing here shows nothing`);
+  }
+});
+
+check("words are dark enough to read on their paper, in light and dark", async () => {
+  // The WCAG AA bar: 4.5 to 1 for normal text, 3 to 1 for big text. Switched-off buttons don't count.
+  const faint = () => js(`document.fonts.ready.then(() => {
+    const rgba = (c) => { const m = c.match(/rgba?\\(([^)]+)\\)/); if (!m) return null; const p = m[1].split(/[\\s,\\/]+/).filter(Boolean).map(parseFloat); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; };
+    const over = (top, under) => top.slice(0, 3).map((v, i) => v * top[3] + under[i] * (1 - top[3])).concat(1);
+    const lum = (c) => { const [r, g, b] = c.slice(0, 3).map((v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
+    // Every color the words could be sitting on. Paper drawn with a gradient counts each of its solid colors.
+    const behind = (el) => {
+      const layers = [];
+      let bases = [[255, 255, 255, 1]];
+      for (let n = el; n; n = n.parentElement) {
+        const s = getComputedStyle(n);
+        const solid = (s.backgroundImage.match(/rgba?\\([^)]+\\)/g) || []).map(rgba).filter((c) => c[3] >= 1);
+        if (solid.length) { bases = solid; break; }
+        const c = rgba(s.backgroundColor);
+        if (c && c[3] > 0) { if (c[3] >= 1) { bases = [c]; break; } layers.push(c); }
+      }
+      return bases.map((base) => layers.reverse().reduce((under, top) => over(top, under), base));
+    };
+    const out = new Map(), walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let t; (t = walk.nextNode());) {
+      const el = t.parentElement, words = t.textContent.trim();
+      if (!/[\\p{L}\\p{N}]/u.test(words) || !el.getClientRects().length || el.closest("[hidden], :disabled, [aria-disabled=true], script, style")) continue;
+      const s = getComputedStyle(el);
+      if (s.visibility !== "visible") continue;
+      let fade = 1; for (let n = el; n; n = n.parentElement) fade *= parseFloat(getComputedStyle(n).opacity);
+      if (fade < .05) continue;
+      const fg = rgba(s.color); fg[3] *= fade;
+      const ratioOn = (bg) => { const L = [lum(over(fg, bg)), lum(bg)].sort((a, b) => b - a); return (L[0] + .05) / (L[1] + .05); };
+      const [ratio, bg] = behind(el).map((bg) => [ratioOn(bg), bg]).sort((a, b) => a[0] - b[0])[0];
+      const px = parseFloat(s.fontSize), big = px >= 24 || (px >= 18.66 && parseInt(s.fontWeight) >= 700);
+      if (ratio < (big ? 3 : 4.5)) {
+        const who = el.tagName.toLowerCase() + [...el.classList].map((c) => "." + c).join("") + " in " + (el.closest("[id]")?.id || "?");
+        out.set(who, who + ' "' + words.slice(0, 24) + '" ' + ratio.toFixed(2) + " (" + s.color + " on rgb(" + bg.slice(0, 3).map(Math.round) + "))");
+      }
+    }
+    return [...out.values()].slice(0, 12); })`);
+  for (const theme of ["light", "dark"]) {
+    for (const [name, show] of screens) {
+      await show();
+      await click(`[data-theme-choice="${theme}"]`);
+      await sleep(100);
+      assert.deepEqual(await faint(), [], `${name}, ${theme}: too faint to read`);
+    }
+  }
 });
