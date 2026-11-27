@@ -590,6 +590,7 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .making { margin: 0; padding-left: 1.4em; display: grid; gap: 10px; }
 .making-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .made-mark { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--basil-wash); color: var(--basil); font-size: .8rem; white-space: nowrap; }
+.made-mark.baking { background: var(--gap); color: var(--red-dark); }
 .making-tools { display: inline-flex; gap: 2px; }
 .making-picks { color: var(--muted); }
 .prep-note { margin: 4px 0 0; font-size: .9rem; }

@@ -93,9 +93,11 @@ export function initNight(ctx) {
            </span>`
         : "";
       const picks = (Array.isArray(p.picks) ? p.picks : []).filter((n) => typeof n === "string");
-      // ✓ once it's come out of the oven, so you can see what's left to make
-      const done = typeof state.night.oven[id]?.readyAt === "number";
-      return `<li data-making="${id}" data-key="m-${id}" class="${done ? "made" : ""}"><div class="making-head"><b>${esc(p.name)}${done ? ` <span class="made-mark">✓ Made</span>` : ""}</b>${tools}</div>
+      // 🔥 while it bakes, ✓ once it's out, so you can see what's left to make
+      const where = state.night.oven[id] ? ovenState(state.night.oven[id], ctx.now()).state : "waiting";
+      const done = where === "ready";
+      const mark = done ? ` <span class="made-mark">✓ Made</span>` : where !== "waiting" ? ` <span class="made-mark baking">🔥 In the oven</span>` : "";
+      return `<li data-making="${id}" data-key="m-${id}" class="${done ? "made" : ""}"><div class="making-head"><b>${esc(p.name)}${mark}</b>${tools}</div>
         <small class="making-picks">${esc(picks.join(", "))}</small>${noteHTML}</li>`;
     };
 
@@ -271,9 +273,10 @@ export function initNight(ctx) {
     if (!A) return;
     try { audio ??= new A(); audio.resume?.(); } catch { /* no sound, that's fine */ }
   };
-  function chime() {
+  function chime(rounds = 3) {
     if (!soundOn() || !audio || audio.state !== "running") return;
-    for (const t of [0, 0.28]) {
+    // Beep-beep, a few times over, so you hear it across the kitchen
+    for (const t of Array.from({ length: rounds }, (_, r) => [r * 0.9, r * 0.9 + 0.28]).flat()) {
       const o = audio.createOscillator(), g = audio.createGain(), at = audio.currentTime + t;
       o.frequency.value = 880;
       o.connect(g).connect(audio.destination);
@@ -524,7 +527,7 @@ export function initNight(ctx) {
       try { if (e.target.checked) localStorage.ovenSound = "on"; else delete localStorage.ovenSound; } catch { /* private browsing */ }
       unlockAudio();
       try { await audio?.resume?.(); } catch { /* no sound, that's fine */ }
-      return chime(); // a beep now, so you know it works
+      return chime(1); // a beep now, so you know it works
     }
     const dd = e.target.dataset || {};
     if (dd.prepDay && ctx.canManage()) return store.set(`night/prepDay/${dd.prepDay}`, Number(e.target.value) || null);

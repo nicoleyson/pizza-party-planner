@@ -431,6 +431,7 @@ check("oven: racks, a countdown, check it, +2 min, ready and stop", async () => 
   await click(`#night-oven [data-rack="z1:top"]`);
   await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.oven?.z1?.rack === "top"`, "z1 on the top rack");
   assert.equal((await oven()).z1.minutes, 1, "uses the party's bake time");
+  await until(`document.querySelector('#night-prep [data-making="z1"] .making-head')?.textContent.includes("🔥 In the oven")`, "in the oven, in Pizzas we're making");
   assert.equal(await js(`document.querySelector('#night-oven [data-rack="z2:top"]').disabled`), true, "the top rack is taken");
   assert.match(await text(`#night-oven [data-rack="z2:top"]`), /Basil Instinct/, "and says by what");
   assert.equal(await js(`document.querySelector('#night-oven [data-rack="z2:bottom"]').disabled`), false);
@@ -451,6 +452,7 @@ check("oven: racks, a countdown, check it, +2 min, ready and stop", async () => 
   await until(`typeof JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night.oven.z1.readyAt === "number"`, "ready");
   assert.match(await row("z1"), /Ready 🍕 at/);
   assert.match(await text(`#night-prep [data-making="z1"] .making-head`), /✓ Made/, "ticked off in Pizzas we're making");
+  assert.doesNotMatch(await text(`#night-prep [data-making="z1"] .making-head`), /In the oven/, "and no longer in the oven");
   assert.doesNotMatch(await text(`#night-prep [data-making="z2"] .making-head`), /✓/, "not the one still to make");
   assert.equal(await js(`document.querySelector('#night-oven [data-rack="z2:top"]').disabled`), false, "the rack is free again");
   await click(`#night-oven [data-undo="z1"]`);
