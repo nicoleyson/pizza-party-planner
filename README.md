@@ -98,7 +98,7 @@ To click through the page itself, the way a guest, the host and a cohost would, 
 npm run test:e2e
 ```
 
-It opens the site in a hidden Chrome window in demo mode, so it never signs in or touches real parties. It brings ingredients, builds a pizza, votes and checks the cut line moves, picks a cohost, checks a finished party is read-only until the host reopens it, and loads a party saved by an older version. It also runs party mode, checks My list, dietary needs and invite-only, makes sure nothing sticks out sideways on a phone, and makes sure anything people type shows up as plain text. It needs Google Chrome and takes a few seconds. Run it before pushing changes to the page.
+It opens the site in a hidden Chrome window in demo mode, so it never signs in or touches real parties. It brings ingredients, builds a pizza, votes and checks the cut line moves, picks a cohost, checks a finished party is read-only until the host reopens it, and loads a party saved by an older version. It also runs party mode, checks My list, dietary needs and invite-only, makes sure nothing sticks out sideways on a phone, makes sure anything people type shows up as plain text, and checks the page works for everyone: every button and box has a name a screen reader can say, you can always see where you are when tabbing with a keyboard, and words are dark enough to read (the WCAG AA bar) in light and dark. It needs Google Chrome and takes a few seconds. Run it before pushing changes to the page.
 
 ### 3. Publish on GitHub Pages
 
