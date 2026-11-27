@@ -93,7 +93,9 @@ export function initNight(ctx) {
            </span>`
         : "";
       const picks = (Array.isArray(p.picks) ? p.picks : []).filter((n) => typeof n === "string");
-      return `<li data-making="${id}" data-key="m-${id}"><div class="making-head"><b>${esc(p.name)}</b>${tools}</div>
+      // ✓ once it's come out of the oven, so you can see what's left to make
+      const done = typeof state.night.oven[id]?.readyAt === "number";
+      return `<li data-making="${id}" data-key="m-${id}" class="${done ? "made" : ""}"><div class="making-head"><b>${esc(p.name)}${done ? ` <span class="made-mark">✓ Made</span>` : ""}</b>${tools}</div>
         <small class="making-picks">${esc(picks.join(", "))}</small>${noteHTML}</li>`;
     };
 

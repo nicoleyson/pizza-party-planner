@@ -589,6 +589,7 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .plan-form { display: grid; gap: 8px; margin-top: 6px; }
 .making { margin: 0; padding-left: 1.4em; display: grid; gap: 10px; }
 .making-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.made-mark { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--basil-wash); color: var(--basil); font-size: .8rem; white-space: nowrap; }
 .making-tools { display: inline-flex; gap: 2px; }
 .making-picks { color: var(--muted); }
 .prep-note { margin: 4px 0 0; font-size: .9rem; }

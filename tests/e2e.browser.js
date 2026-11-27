@@ -450,9 +450,12 @@ check("oven: racks, a countdown, check it, +2 min, ready and stop", async () => 
   await click(`#night-oven [data-ready="z1"]`);
   await until(`typeof JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night.oven.z1.readyAt === "number"`, "ready");
   assert.match(await row("z1"), /Ready 🍕 at/);
+  assert.match(await text(`#night-prep [data-making="z1"] .making-head`), /✓ Made/, "ticked off in Pizzas we're making");
+  assert.doesNotMatch(await text(`#night-prep [data-making="z2"] .making-head`), /✓/, "not the one still to make");
   assert.equal(await js(`document.querySelector('#night-oven [data-rack="z2:top"]').disabled`), false, "the rack is free again");
   await click(`#night-oven [data-undo="z1"]`);
   await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night.oven.z1.readyAt === undefined`, "undo ready");
+  await until(`!document.querySelector('#night-prep [data-making="z1"]').textContent.includes("✓")`, "undo takes the tick off");
   await click(`#night-oven [data-ready="z1"]`);
   await until(`typeof JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night.oven.z1.readyAt === "number"`, "ready again");
 
