@@ -1142,3 +1142,15 @@ check("words are dark enough to read on their paper, in light and dark", async (
     }
   }
 });
+
+check("a pizza that skipped the timer can still be marked made, and undone", async () => {
+  await open(nightParty(-60000), "matt", "Matt");
+  await click(`#night-oven [data-made="z2"]`);
+  await until(`typeof JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.oven?.z2?.readyAt === "number"`, "z2 made");
+  assert.match(await text(`#night-oven [data-oven="z2"]`), /Ready 🍕 at/);
+  assert.match(await text(`#night-prep [data-making="z2"] .making-head`), /✓ Made/);
+  assert.equal(await js(`document.querySelector('#night-oven [data-rack="z1:top"]').disabled`), false, "no rack taken");
+  await click(`#night-oven [data-undo="z2"]`);
+  await until(`!JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night.oven.z2`, "undo puts it back to up next, not into the oven");
+  assert.match(await text(`#night-oven [data-oven="z2"]`), /Up next/);
+});

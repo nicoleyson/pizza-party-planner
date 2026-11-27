@@ -240,7 +240,7 @@ export function initNight(ctx) {
             const taken = busy[rack];
             return `<button type="button" class="${taken ? "secondary" : ""}" data-rack="${id}:${rack}" ${taken || !open ? "disabled" : ""}>${label}${taken ? ` · ${esc(state.pizzas[taken].name)}` : ""}</button>`;
           })
-          .join("")}</span>`;
+          .join("")}<button type="button" class="ghost" data-made="${id}" ${dis}>Already made ✓</button></span>`;
       } else if (st === "baking") {
         body = `<span class="oven-status">🔥 ${RACKS[e.rack]} <span class="countdown">${clock(secs)}</span>${rotateIn ? ` <small class="rotate-in">🔄 in ${clock(rotateIn)}</small>` : ""}</span>
           <span class="oven-btns"><button type="button" class="secondary" data-plus="${id}" ${dis}>+2 min</button><button type="button" class="ghost" data-stop="${id}" ${dis}>Stop</button></span>`;
@@ -273,17 +273,24 @@ export function initNight(ctx) {
     if (!A) return;
     try { audio ??= new A(); audio.resume?.(); } catch { /* no sound, that's fine */ }
   };
-  function chime(rounds = 3) {
+  // A friendly ding-ding-ding (three rising bell notes), three times over: about 3 seconds,
+  // long enough to hear across the kitchen without being scary
+  function chime() {
     if (!soundOn() || !audio || audio.state !== "running") return;
-    // Beep-beep, a few times over, so you hear it across the kitchen
-    for (const t of Array.from({ length: rounds }, (_, r) => [r * 0.9, r * 0.9 + 0.28]).flat()) {
-      const o = audio.createOscillator(), g = audio.createGain(), at = audio.currentTime + t;
-      o.frequency.value = 880;
-      o.connect(g).connect(audio.destination);
-      g.gain.setValueAtTime(0.25, at);
-      g.gain.exponentialRampToValueAtTime(0.001, at + 0.22);
-      o.start(at);
-      o.stop(at + 0.24);
+    const NOTES = [784, 988, 1175]; // G, B, D: a bright, happy chord
+    for (let round = 0; round < 3; round++) {
+      NOTES.forEach((freq, i) => {
+        const o = audio.createOscillator(), g = audio.createGain(), at = audio.currentTime + round * 1.1 + i * 0.16;
+        o.type = "sine";
+        o.frequency.value = freq;
+        o.connect(g).connect(audio.destination);
+        // A bell: a soft quick start, then a gentle ring-out
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(0.22, at + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.001, at + 0.6);
+        o.start(at);
+        o.stop(at + 0.62);
+      });
     }
   }
   function timesUp(id) {
@@ -323,7 +330,10 @@ export function initNight(ctx) {
     if (change === "stop") return store.set(`night/oven/${id}`, null);
     if (change === "plus" && e) return store.set(`night/oven/${id}/minutes`, Math.min(60, e.minutes + 2));
     if (change === "ready" && e) return store.set(`night/oven/${id}/readyAt`, ctx.stamp());
-    if (change === "undo" && e) return store.set(`night/oven/${id}/readyAt`, null);
+    // Undo on one that skipped the timer puts it back to "Up next", not into the oven
+    if (change === "undo" && e) return store.set(e.readyAt === e.startedAt ? `night/oven/${id}` : `night/oven/${id}/readyAt`, null);
+    // Forgot the timer? Mark it made anyway (one time for both, so Undo can tell)
+    if (change === "made" && !e) { const t = ctx.stamp(); return store.set(`night/oven/${id}`, { rack: "top", startedAt: t, minutes: bakeMinutes(state.meta), readyAt: t }); }
     if (change === "back" && e) { lastState.set(id, "back"); return store.set(`night/oven/${id}/backAt`, ctx.stamp()); }
     if (change === "top" || change === "bottom") {
       const now = ctx.now();
@@ -413,8 +423,8 @@ export function initNight(ctx) {
     if (d.rack) {
       const [id, rack] = d.rack.split(":");
       await oven(id, rack);
-    } else if (d.plus || d.stop || d.ready || d.undo || d.back) {
-      const change = ["plus", "stop", "ready", "undo", "back"].find((k) => d[k]);
+    } else if (d.plus || d.stop || d.ready || d.undo || d.back || d.made) {
+      const change = ["plus", "stop", "ready", "undo", "back", "made"].find((k) => d[k]);
       await oven(d[change], change);
     } else if ("backToPlanning" in d) {
       previewing = false;
@@ -527,7 +537,7 @@ export function initNight(ctx) {
       try { if (e.target.checked) localStorage.ovenSound = "on"; else delete localStorage.ovenSound; } catch { /* private browsing */ }
       unlockAudio();
       try { await audio?.resume?.(); } catch { /* no sound, that's fine */ }
-      return chime(1); // a beep now, so you know it works
+      return chime(); // the full alarm now, so you know what it sounds like
     }
     const dd = e.target.dataset || {};
     if (dd.prepDay && ctx.canManage()) return store.set(`night/prepDay/${dd.prepDay}`, Number(e.target.value) || null);
