@@ -273,12 +273,12 @@ export function initNight(ctx) {
     if (!A) return;
     try { audio ??= new A(); audio.resume?.(); } catch { /* no sound, that's fine */ }
   };
-  // A friendly ding-ding-ding (three rising bell notes), three times over: about 3 seconds,
+  // A friendly ding-ding-ding (three rising bell notes), six times over: about 6 seconds,
   // long enough to hear across the kitchen without being scary
   function chime() {
     if (!soundOn() || !audio || audio.state !== "running") return;
     const NOTES = [784, 988, 1175]; // G, B, D: a bright, happy chord
-    for (let round = 0; round < 3; round++) {
+    for (let round = 0; round < 6; round++) {
       NOTES.forEach((freq, i) => {
         const o = audio.createOscillator(), g = audio.createGain(), at = audio.currentTime + round * 1.1 + i * 0.16;
         o.type = "sine";
