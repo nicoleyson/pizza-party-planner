@@ -18,6 +18,7 @@
   --on-red: #fff;
   --basil: #2f7d3b;
   --basil-wash: #e4f1e2;
+  --basil-ink: #276a31; /* basil for small words, dark enough on the wash */
   --crust: #e3a857;
   --gap: #fdeae6;
   --note: #ffe680;
@@ -555,6 +556,7 @@ ul.list li.editing { display: block; padding: 8px 0; }
   --on-red: #fff;
   --basil: #3d6b3a;
   --basil-wash: #dbe6cf;
+  --basil-ink: #3d6b3a;
   --gap: #f2d6c8;
   --note: #e8d27a;
   --shadow: rgba(0, 0, 0, .45);
@@ -591,7 +593,7 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .plan-form { display: grid; gap: 8px; margin-top: 6px; }
 .making { margin: 0; padding-left: 1.4em; display: grid; gap: 10px; }
 .making-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.made-mark { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--basil-wash); color: var(--basil); font-size: .8rem; white-space: nowrap; }
+.made-mark { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--basil-wash); color: var(--basil-ink); font-size: .8rem; white-space: nowrap; }
 .made-mark.baking { background: var(--gap); color: var(--red-dark); }
 .making-tools { display: inline-flex; gap: 2px; }
 .making-picks { color: var(--muted); }
@@ -644,7 +646,7 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .oven-row { display: grid; gap: 6px; padding: 10px; border: 2px solid var(--paper-edge); border-radius: 10px; }
 .oven-row.baking { border-color: var(--red); }
 .oven-row.check { border-color: var(--red); background: var(--field); animation: check-pulse 1.2s ease-in-out infinite; }
-.oven-row.ready { opacity: .75; }
+.oven-row.ready { border-style: dashed; } /* done: quieter, but every word still easy to read */
 .oven-status { font-weight: 700; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .countdown, .over { font-variant-numeric: tabular-nums; font-size: 1.3rem; }
 .oven-btns { display: flex; flex-wrap: wrap; gap: 6px; }

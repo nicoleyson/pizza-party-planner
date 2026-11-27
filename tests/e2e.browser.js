@@ -799,9 +799,13 @@ const screens = [
     await click(`#night-prep [data-edit-tags="mushrooms"]`);
     await click(`#night-prep [data-edit-ing="mozzarella"]`);
   }],
-  ["a guest during party mode, with a pizza in the oven", async () => {
+  ["a guest during party mode, with a pizza in the oven, one out to rotate and one made", async () => {
     const party = nightParty(-60000);
-    party.night = { oven: { z1: { rack: "top", startedAt: Date.now(), minutes: 8 } } };
+    party.night = { oven: {
+      z1: { rack: "top", startedAt: Date.now(), minutes: 8 },
+      z2: { rack: "top", startedAt: Date.now() - 20 * 60000, minutes: 8, readyAt: Date.now() - 10 * 60000 },
+      z3: { rack: "bottom", startedAt: Date.now() - 5 * 60000, minutes: 8, rotateAt: 4 },
+    } };
     await open(party, "matt", "Matt");
   }],
   ["the keepsake", async () => {
