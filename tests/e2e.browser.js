@@ -47,7 +47,7 @@ let errors = [];
 async function launch() {
   profile = mkdtempSync(join(tmpdir(), "pizza-e2e-"));
   // GitHub's Ubuntu machines don't allow Chrome's sandbox; it only ever opens this local test site there
-  chrome = spawn(CHROME, ["--headless=new", ...(process.env.CI ? ["--no-sandbox"] : []), "--remote-debugging-port=0", `--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check", "about:blank"], { stdio: ["ignore", "ignore", "pipe"] });
+  chrome = spawn(CHROME, ["--headless=new", ...(process.env.CI ? ["--no-sandbox"] : []), "--remote-debugging-port=0", `--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check", "--autoplay-policy=no-user-gesture-required", "about:blank"], { stdio: ["ignore", "ignore", "pipe"] });
   const wsBrowser = await new Promise((resolve, reject) => {
     let log = "";
     chrome.stderr.on("data", (d) => { log += d; const m = log.match(/ws:\/\/[^\s]+/); if (m) resolve(m[0]); });
@@ -311,12 +311,19 @@ check("the host schedules party mode, and voting closes at the start time", asyn
   assert.equal(await visible("#meta-night-time"), true);
   await fill("#meta-night-time", "16:00");
   await fill("#meta-bake", "10");
+  await fill("#meta-rotate", "5");
   await submit("#meta-form");
   await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].meta.nightTime === "16:00"`, "party mode saved");
   const [y, m, d] = day.split("-").map(Number);
   const meta = (await saved()).meta;
   assert.equal(meta.nightAt, new Date(y, m - 1, d, 16).getTime());
   assert.equal(meta.bakeMinutes, 10);
+  assert.equal(meta.rotateMinutes, 5, "🔄 rotate halfway");
+  await click("#edit-meta");
+  assert.equal(await js(`document.getElementById("meta-rotate").value`), "5", "the form shows it next time");
+  await fill("#meta-rotate", "");
+  await submit("#meta-form");
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].meta.rotateMinutes === undefined`, "emptied: no turn");
   assert.match(await text("#party-date"), /Party mode starts at/);
 
   // Once it starts, voting and new pizzas stop; the tally stays
@@ -462,6 +469,52 @@ check("oven: racks, a countdown, check it, +2 min, ready and stop", async () => 
   await until(`!document.querySelector('#night-prep [data-making="z2"]')`, "z2 below the line");
   assert.equal(await visible(`#night-oven [data-oven="z2"]`), true, "still in the oven list");
   await js(`delete localStorage.clockSkew; true`);
+});
+
+check("🔄 the timer stops at the rotate mark, waits while it's out, and the sound is off until you turn it on", async () => {
+  await open(nightParty(-60000, { bakeMinutes: 2, rotateMinutes: 1 }), "matt", "Matt");
+  // Counts the beeps: every chime makes oscillators
+  await js(`window.__beeps = 0; const make = AudioContext.prototype.createOscillator;
+    AudioContext.prototype.createOscillator = function () { window.__beeps++; return make.call(this); }; true`);
+  const row = () => text(`#night-oven [data-oven="z1"]`);
+  assert.match(await text("#night-oven"), /Rotate at 1 min/);
+  assert.equal(await js(`document.querySelector("#night-oven [data-sound]").checked`), false, "sound starts off");
+
+  await click(`#night-oven [data-rack="z1:top"]`);
+  await until(`JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night?.oven?.z1?.rotateAt === 1`, "the timer knows when to turn");
+  assert.match(await row(), /🔄 in [01]:\d\d/);
+
+  await watchToasts();
+  await js(`localStorage.clockSkew = "61000"; true`);
+  await until(`document.querySelector('#night-oven [data-oven="z1"]')?.textContent.includes("Rotate! 🔄")`, "rotate", 4000);
+  await until(`window.__toasts.some((t) => /rotate/i.test(t) && t.includes("Basil Instinct"))`, "the rotate heads-up");
+  assert.equal(await js(`window.__beeps`), 0, "no sound while it's off");
+  assert.match(await text(`#night-oven [data-oven="z1"] .countdown`), /^1:00$/, "a minute still to go");
+  assert.equal(await js(`document.querySelector('#night-oven [data-rack="z2:top"]').disabled`), true, "its rack stays taken while it's out");
+
+  // Turning it takes a while: the clock waits
+  await js(`localStorage.clockSkew = "150000"; true`);
+  await sleep(1200);
+  assert.match(await row(), /Rotate! 🔄/);
+  assert.match(await text(`#night-oven [data-oven="z1"] .countdown`), /^1:00$/, "still a minute to go");
+
+  await click(`#night-oven [data-sound]`);
+  await until(`localStorage.ovenSound === "on"`, "sound on, on this phone");
+  await until(`window.__beeps > 0`, "a beep to show it works");
+  const beeps = await js(`window.__beeps`);
+
+  await click(`#night-oven [data-back="z1"]`);
+  await until(`typeof JSON.parse(localStorage["pizza-demo"]).parties["${CODE}"].night.oven.z1.backAt === "number"`, "back in the oven");
+  await until(`/^[01]:\\d\\d$/.test(document.querySelector('#night-oven [data-oven="z1"] .countdown')?.textContent || "")`, "counting down the last minute");
+  assert.doesNotMatch(await row(), /Rotate|🔄 in/);
+
+  await js(`localStorage.clockSkew = "211000"; true`);
+  await until(`document.querySelector('#night-oven [data-oven="z1"]')?.textContent.includes("Check it! 👀")`, "check it, a minute after it went back in", 4000);
+  await until(`window.__beeps > ${beeps}`, "and it beeps now");
+
+  await open(null, "matt", "Matt");
+  assert.equal(await js(`document.querySelector("#night-oven [data-sound]").checked`), true, "sound stays on after a reload");
+  await js(`delete localStorage.clockSkew; delete localStorage.ovenSound; true`);
 });
 
 check("rate ready pizzas, pick the most adventurous, and the keepsake shows the awards", async () => {

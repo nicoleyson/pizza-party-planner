@@ -162,7 +162,7 @@ function showGate() {
         uid,
         createdAt: Date.now(),
         ...dateFields($("new-date").value),
-        ...nightFields($("new-date").value, $("new-night-time").value, $("new-bake").value),
+        ...nightFields($("new-date").value, $("new-night-time").value, $("new-bake").value, $("new-rotate").value),
       });
     } catch (err) {
       console.error(err);
@@ -876,6 +876,7 @@ function startParty(code) {
       $("meta-date").value = state.meta.date || "";
       $("meta-night-time").value = state.meta.nightTime || "";
       $("meta-bake").value = state.meta.bakeMinutes || "";
+      $("meta-rotate").value = state.meta.rotateMinutes || "";
       $("meta-night").hidden = !$("meta-date").value;
       $("meta-goal").value = pizzaGoal(state.meta) || "";
       renderCohostPicker();
@@ -906,8 +907,8 @@ function startParty(code) {
     const goal = pizzaGoal({ pizzaGoal: Number(goalText) });
     if (goalText && !goal) return toast("Pick a number of pizzas from 1 to 50");
     const wasOver = over();
-    const { date: _d, endsAt: _e, pizzaGoal: _g, nightTime: _t, nightAt: _n, bakeMinutes: _b, ...rest } = state.meta;
-    await store.set("meta", { ...rest, title, details: $("meta-details").value.trim().slice(0, 200), ...dateFields(date), ...nightFields(date, $("meta-night-time").value, $("meta-bake").value), ...(goal && { pizzaGoal: goal }) });
+    const { date: _d, endsAt: _e, pizzaGoal: _g, nightTime: _t, nightAt: _n, bakeMinutes: _b, rotateMinutes: _r, ...rest } = state.meta;
+    await store.set("meta", { ...rest, title, details: $("meta-details").value.trim().slice(0, 200), ...dateFields(date), ...nightFields(date, $("meta-night-time").value, $("meta-bake").value, $("meta-rotate").value), ...(goal && { pizzaGoal: goal }) });
     if (isOwner()) {
       for (const box of document.querySelectorAll("#cohost-chips [data-cohost]")) {
         const id = box.dataset.cohost;

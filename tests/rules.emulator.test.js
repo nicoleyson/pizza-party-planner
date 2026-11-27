@@ -336,6 +336,10 @@ test("party mode: anyone at the party ticks prep and runs the oven", { skip }, a
   await allowed(put(`${P}/night/oven/np2`, { ...oven, startedAt: { ".sv": "timestamp" } }, guest), "with the server's clock");
   await allowed(put(`${P}/night/oven/np2/minutes`, 10, guest), "+2 min");
   await allowed(put(`${P}/night/oven/np2/readyAt`, { ".sv": "timestamp" }, guest), "ready");
+  await allowed(put(`${P}/night/oven/np2`, { ...oven, rotateAt: 4 }, guest), "a timer that stops to rotate");
+  await allowed(put(`${P}/night/oven/np2/backAt`, { ".sv": "timestamp" }, guest), "back in after the turn");
+  await denied(put(`${P}/night/oven/np2/backAt`, Date.now() + 60000, guest), "back in, in the future");
+  await denied(put(`${P}/night/oven/np2/rotateAt`, 61, guest), "rotate after an hour");
   await allowed(del(`${P}/night/oven/np2`, guest), "stop");
   await denied(put(`${P}/night/oven/np2`, { ...oven, rack: "middle" }, guest), "no middle rack");
   await denied(put(`${P}/night/oven/np2`, { ...oven, startedAt: Date.now() + 60000 }, guest), "start time in the future");
@@ -385,6 +389,9 @@ test("party mode settings on the party", { skip }, async () => {
   await denied(put(`${P}/meta`, { ...base, nightAt: Date.now() }, host), "timestamp needs its time");
   await denied(put(`${P}/meta`, { ...base, bakeMinutes: 31 }, host), "bake time over 30");
   await denied(put(`${P}/meta`, { ...base, bakeMinutes: 0 }, host), "bake time 0");
+  await allowed(put(`${P}/meta`, { ...base, nightTime: "16:00", nightAt: Date.now() + HOUR, bakeMinutes: 8, rotateMinutes: 4 }, host), "🔄 rotate at 4 min");
+  await denied(put(`${P}/meta`, { ...base, rotateMinutes: 0 }, host), "rotate at 0");
+  await denied(put(`${P}/meta`, { ...base, rotateMinutes: 30 }, host), "rotate at 30");
 });
 
 test("party mode: hosts add a pizza after the start, and write notes on prep list ingredients", { skip }, async () => {

@@ -47,6 +47,9 @@
           "bakeMinutes": {
             ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 30"
           },
+          "rotateMinutes": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 29"
+          },
           "$other": {
             ".validate": false
           }
@@ -280,6 +283,12 @@
                 ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 60"
               },
               "readyAt": {
+                ".validate": "newData.isNumber() && newData.val() <= now"
+              },
+              "rotateAt": {
+                ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 59"
+              },
+              "backAt": {
                 ".validate": "newData.isNumber() && newData.val() <= now"
               },
               "$other": {

@@ -168,19 +168,29 @@ export const BAKE_DEFAULT = 8;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const okBake = (n) => Number.isInteger(n) && n >= 1 && n <= 30;
 
-// What to save on meta for a date, a "HH:MM" start time and a bake time. Nothing without a real date and time.
-export function nightFields(date, time, bake) {
+const num = (v) => (typeof v === "number" ? v : v === "" || v == null ? NaN : Number(v));
+
+// What to save on meta for a date, a "HH:MM" start time, a bake time and when to rotate the pizza.
+// Nothing without a real date and time.
+export function nightFields(date, time, bake, rotate) {
   if (!partyEndsAt(date) || !TIME_RE.test(time || "")) return {};
   const [y, m, d] = date.split("-").map(Number);
   const [h, min] = time.split(":").map(Number);
   const out = { nightTime: time, nightAt: new Date(y, m - 1, d, h, min).getTime() };
-  const n = typeof bake === "number" ? bake : bake === "" || bake == null ? NaN : Number(bake);
+  const n = num(bake);
   if (okBake(n)) out.bakeMinutes = n;
+  const r = num(rotate);
+  if (Number.isInteger(r) && r >= 1 && r < bakeMinutes(out)) out.rotateMinutes = r;
   return out;
 }
 
 export const isNight = (meta, now = Date.now()) => typeof meta?.nightAt === "number" && now >= meta.nightAt && !isOver(meta, now);
 export const bakeMinutes = (meta) => (okBake(meta?.bakeMinutes) ? meta.bakeMinutes : BAKE_DEFAULT);
+// 🔄 Minutes in when the pizza gets turned, or null for no turn
+export const rotateMinutes = (meta) => {
+  const r = meta?.rotateMinutes;
+  return Number.isInteger(r) && r >= 1 && r < bakeMinutes(meta) ? r : null;
+};
 
 // The pizzas being made, in order: the host's moves first, then the rest by votes. `goal` of them (0 = all).
 export function makingList(pizzas, goal, order) {
@@ -239,11 +249,21 @@ export function prepChoices(items, list) {
 
 // Where a pizza is in the oven. Timers save a start time and a length, so every phone
 // counts down on its own: waiting -> baking (secs left) -> check (secs over) -> ready.
+// With a turn (rotateAt minutes in), the clock stops there: rotate (secs still to go), and
+// picks up again from backAt, when it's back in, since taking it out and turning it takes a while.
 export function ovenState(entry, now) {
   if (!entry || typeof entry !== "object") return { state: "waiting", secs: 0 };
   if (typeof entry.readyAt === "number") return { state: "ready", secs: 0 };
-  const left = entry.startedAt + entry.minutes * 60000 - now;
-  return left > 0 ? { state: "baking", secs: Math.ceil(left / 1000) } : { state: "check", secs: Math.floor(Math.abs(left) / 1000) };
+  const total = entry.minutes * 60000;
+  const turn = typeof entry.rotateAt === "number" && entry.rotateAt > 0 && entry.rotateAt < entry.minutes ? entry.rotateAt * 60000 : 0;
+  const back = typeof entry.backAt === "number";
+  if (turn && !back && now - entry.startedAt >= turn) return { state: "rotate", secs: Math.ceil((total - turn) / 1000) };
+  const baked = turn && back ? turn + (now - entry.backAt) : now - entry.startedAt;
+  const left = total - baked;
+  if (left <= 0) return { state: "check", secs: Math.floor(Math.abs(left) / 1000) };
+  const out = { state: "baking", secs: Math.ceil(left / 1000) };
+  if (turn && !back) out.rotateIn = Math.ceil((turn - baked) / 1000);
+  return out;
 }
 
 // 312 -> "5:12"

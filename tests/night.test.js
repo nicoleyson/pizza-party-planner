@@ -124,3 +124,34 @@ test("prepList adds things people bring that the host put on the list, like the 
   assert.deepEqual(prepChoices(items, list).map((c) => [c.key, c.name, c.by]), [["sparkling_water", "Sparkling Water", "Brad"]]);
   assert.deepEqual(prepChoices(items, prepList(["A"], pizzas, items)).map((c) => c.key), ["dough", "sparkling_water"]);
 });
+
+test("ovenState: the timer stops at the rotate mark and waits until it's back in", async () => {
+  const { ovenState } = await import("../lib.js");
+  const e = { rack: "top", startedAt: 0, minutes: 8, rotateAt: 4 };
+  assert.deepEqual(ovenState(e, 60000), { state: "baking", secs: 420, rotateIn: 180 }, "counts down to the turn too");
+  assert.deepEqual(ovenState(e, 240000), { state: "rotate", secs: 240 }, "at 4 min: rotate, 4 min still to go");
+  assert.deepEqual(ovenState(e, 400000), { state: "rotate", secs: 240 }, "the clock waits while it's out");
+  const back = { ...e, backAt: 400000 };
+  assert.deepEqual(ovenState(back, 460000), { state: "baking", secs: 180 }, "back in: the rest of the time, from then");
+  assert.deepEqual(ovenState(back, 640000), { state: "check", secs: 0 }, "4 min after it went back in");
+  assert.deepEqual(ovenState({ ...back, minutes: 10 }, 640000), { state: "baking", secs: 120 }, "+2 min still works after the turn");
+  assert.deepEqual(ovenState({ ...e, rotateAt: 8 }, 300000), { state: "baking", secs: 180 }, "a turn at or after the end is ignored");
+  assert.deepEqual(ovenState({ ...e, readyAt: 300000 }, 300000), { state: "ready", secs: 0 }, "ready skips the turn");
+});
+
+test("nightFields: a rotate time, only if it's before the end of the bake", async () => {
+  const { nightFields } = await import("../lib.js");
+  assert.equal(nightFields("2026-12-05", "16:00", 8, 4).rotateMinutes, 4);
+  assert.equal(nightFields("2026-12-05", "16:00", "", "3").rotateMinutes, 3, "typed in, with the 8 min default");
+  assert.equal(nightFields("2026-12-05", "16:00", 8, 8).rotateMinutes, undefined, "not at the very end");
+  assert.equal(nightFields("2026-12-05", "16:00", 8, "").rotateMinutes, undefined, "left empty: no turn");
+  assert.equal(nightFields("2026-12-05", "16:00", 8, 2.5).rotateMinutes, undefined, "whole minutes");
+});
+
+test("rotateMinutes: the turn the next timer gets, if any", async () => {
+  const { rotateMinutes } = await import("../lib.js");
+  assert.equal(rotateMinutes({ bakeMinutes: 8, rotateMinutes: 4 }), 4);
+  assert.equal(rotateMinutes({ rotateMinutes: 4 }), 4, "with the default bake time");
+  assert.equal(rotateMinutes({ bakeMinutes: 4, rotateMinutes: 4 }), null, "bake time cut to the turn");
+  assert.equal(rotateMinutes({}), null);
+});

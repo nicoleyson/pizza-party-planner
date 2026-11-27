@@ -644,7 +644,9 @@ ul.list li.editing { display: block; padding: 8px 0; }
 .oven-status { font-weight: 700; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .countdown, .over { font-variant-numeric: tabular-nums; font-size: 1.3rem; }
 .oven-btns { display: flex; flex-wrap: wrap; gap: 6px; }
-.wake { margin-top: 12px; }
+.wake, .sound { margin-top: 12px; }
+.oven-row.rotate { border-color: var(--crust); background: var(--gap); }
+.rotate-in { color: var(--muted); font-weight: 700; }
 @keyframes check-pulse { 50% { box-shadow: 0 0 0 4px var(--red); } }
 @media (prefers-reduced-motion: reduce) { .oven-row.check { animation: none; } }
 .awards { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
